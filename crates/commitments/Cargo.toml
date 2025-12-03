@@ -1,0 +1,28 @@
+[package]
+name = "fabric-commitments"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# common = { package = "fabric-common", path = "crates/common" }
+eyre = { workspace = true }
+# futures = { workspace = true }
+# http-body = { workspace = true }
+# http-body-util = { workspace = true }
+# jsonrpsee = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+# tokio = { workspace = true }
+# tracing = { workspace = true }
+# tracing-subscriber = { workspace = true }
+alloy = { workspace = true }
+# commit-boost = { workspace = true }
+# cb-common = { workspace = true }
+# prometheus = { workspace = true }
+# lazy_static = { workspace = true }
+# axum = { workspace = true }
+
+# [dev-dependencies]
+# common = { package = "fabric-common", path = "crates/common", features = ["test-utils"] }
+# rocksdb = { workspace = true }
+# tempfile = { workspace = true }

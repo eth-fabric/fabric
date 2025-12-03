@@ -1,0 +1,14 @@
+[package]
+name = "fabric-signing"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+commitments = { package = "fabric-commitments", path = "../commitments" }
+alloy = { workspace = true }
+blst = { workspace = true }
+eyre = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+# commit-boost = { workspace = true }
+# urc = { workspace = true }
