@@ -3,7 +3,7 @@ members = [
     # "bin",
     # "crates/common",
     "crates/commitments",
-    # "crates/constraints",
+    "crates/constraints",
     # "crates/inclusion",
     # "crates/lookahead",
     "crates/signing",

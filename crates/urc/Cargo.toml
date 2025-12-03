@@ -6,6 +6,8 @@ edition = "2024"
 [dependencies]
 alloy = { version = "1.0", features = ["sol-types", "contract"] }
 serde = { version = "1.0", features = ["derive"] }
+commitments = { package = "fabric-commitments", path = "../commitments" }
+constraints = { package = "fabric-constraints", path = "../constraints" }
 blst = { workspace = true }
 eyre = { workspace = true }
 commit-boost = { workspace = true }

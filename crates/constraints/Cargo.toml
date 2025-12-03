@@ -1,0 +1,11 @@
+[package]
+name = "fabric-constraints"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eyre = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+alloy = { workspace = true }
+commit-boost = { workspace = true }

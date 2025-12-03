@@ -2862,6 +2862,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "fabric-constraints"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "commit-boost",
+ "eyre",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "fabric-signing"
 version = "0.1.0"
 dependencies = [
@@ -2882,6 +2893,8 @@ dependencies = [
  "blst",
  "commit-boost",
  "eyre",
+ "fabric-commitments",
+ "fabric-constraints",
  "serde",
 ]
 
