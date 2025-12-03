@@ -6,17 +6,17 @@ use alloy::sol;
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[allow(dead_code)]
 pub enum MessageType {
-	Reserved = 0,
-	Registration = 1,
-	Delegation = 2,
-	Commitment = 3,
-	Constraints = 4,
+    Reserved = 0,
+    Registration = 1,
+    Delegation = 2,
+    Commitment = 3,
+    Constraints = 4,
 }
 
 impl MessageType {
-	pub fn to_uint256(self) -> U256 {
-		U256::from(self as u64)
-	}
+    pub fn to_uint256(self) -> U256 {
+        U256::from(self as u64)
+    }
 }
 
 sol! {

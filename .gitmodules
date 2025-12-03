@@ -1,0 +1,4 @@
+[submodule "vendor/urc"]
+	path = vendor/urc
+	url = https://github.com/eth-fabric/urc.git
+	branch = signing-domain

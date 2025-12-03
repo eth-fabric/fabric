@@ -7,6 +7,7 @@ members = [
     # "crates/inclusion",
     # "crates/lookahead",
     "crates/signing",
+    "crates/urc",
     # "tests",
 ]
 resolver = "2"
@@ -55,7 +56,7 @@ blst = "0.3"
 # rand = "0.8"
 # mockall = "0.13"
 
-# # commit-boost = { git = "https://github.com/Commit-Boost/commit-boost-client", branch = "fabric" }
+commit-boost = { git = "https://github.com/Commit-Boost/commit-boost-client", branch = "fabric" }
 # # cb-common = { git = "https://github.com/Commit-Boost/commit-boost-client", branch = "fabric" }
 # # cb-signer = { git = "https://github.com/Commit-Boost/commit-boost-client", branch = "fabric" }
 # # cb-tests = { git = "https://github.com/Commit-Boost/commit-boost-client", branch = "fabric" }

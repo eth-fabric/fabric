@@ -7,8 +7,7 @@ edition = "2024"
 commitments = { package = "fabric-commitments", path = "../commitments" }
 alloy = { workspace = true }
 blst = { workspace = true }
+commit-boost = { workspace = true }
 eyre = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-# commit-boost = { workspace = true }
-# urc = { workspace = true }
