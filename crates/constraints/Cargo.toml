@@ -9,3 +9,15 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 alloy = { workspace = true }
 commit-boost = { workspace = true }
+lazy_static = { workspace = true }
+prometheus = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+axum = { workspace = true }
+reqwest = { workspace = true }
+mockall = { workspace = true, optional = true }
+
+[dev-dependencies]
+cb-common = { workspace = true }
+mockall = { workspace = true }
+tokio = { workspace = true }

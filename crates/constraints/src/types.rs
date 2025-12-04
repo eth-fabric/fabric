@@ -126,6 +126,18 @@ impl SubmitBlockRequestWithProofs {
     }
 }
 
+/// Response wrapper for GET /delegations
+#[derive(Serialize, Deserialize)]
+pub struct DelegationsResponse {
+    pub delegations: Vec<SignedDelegation>,
+}
+
+/// Response wrapper for GET /constraints
+#[derive(Serialize, Deserialize)]
+pub struct ConstraintsResponse {
+    pub constraints: Vec<SignedConstraints>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

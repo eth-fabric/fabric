@@ -16,7 +16,7 @@ use crate::bindings::i_registry::{
 
 use crate::{MessageType, Registration, SignedRegistration, URCRegisterInputs};
 use commitments::types::{Commitment, CommitmentRequest};
-use constraints::types::spec::{ConstraintsMessage, Delegation};
+use constraints::types::{ConstraintsMessage, Delegation};
 
 /// Converts a pubkey to its corresponding affine G1 point form for EVM precompile usage
 fn convert_pubkey_to_g1_point(pubkey: &BlsPublicKey) -> Result<G1Point> {

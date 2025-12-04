@@ -2967,10 +2967,19 @@ name = "fabric-constraints"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "async-trait",
+ "axum 0.8.7",
+ "cb-common",
  "commit-boost",
  "eyre",
+ "lazy_static",
+ "mockall",
+ "prometheus",
+ "reqwest",
  "serde",
  "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
