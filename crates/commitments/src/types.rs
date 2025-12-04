@@ -41,16 +41,15 @@ pub struct SlotInfo {
     pub offerings: Vec<Offering>,
 }
 
+/// Response containing slot information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SlotInfoResponse {
+    pub slots: Vec<SlotInfo>,
+}
+
 /// Fee information for a commitment request
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FeeInfo {
     pub fee_payload: Bytes, // opaque fee payload
     pub commitment_type: u64,
-}
-
-/// Fee payload for an inclusion preconf request
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FeePayload {
-    pub request_hash: B256,
-    pub price_gwei: u64,
 }
