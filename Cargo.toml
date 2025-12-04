@@ -5,7 +5,7 @@ members = [
     "crates/commitments",
     "crates/constraints",
     # "crates/inclusion",
-    # "crates/lookahead",
+    "crates/lookahead",
     "crates/signing",
     "crates/urc",
     # "tests",
@@ -22,10 +22,10 @@ config = "0.15.15"
 # jsonrpsee = { version = "0.26.0", features = ["http-client", "server", "client-core"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-# tokio = { version = "1.47.1", features = ["full"] }
-# toml = "0.9.5"
-# tracing = "0.1.41"
-# tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
+tokio = { version = "1.47.1", features = ["full"] }
+toml = "0.9.5"
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 alloy = { version = "^1.0.35", features = [
     "full",
     "getrandom",
@@ -41,9 +41,9 @@ alloy = { version = "^1.0.35", features = [
 # clap = { version = "4.5", features = ["derive"] }
 # color-eyre = "0.6"
 # urc = { path = "./crates/common/bindings/urc" }
-# hex = "0.4"
+hex = "0.4"
 # axum = { version = "0.8", features = ["macros", "multipart"] }
-# reqwest = { version = "0.12.4", features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12.4", features = ["json", "rustls-tls"] }
 # chrono = { version = "0.4", features = ["serde"] }
 # tempfile = "3.8"
 # prometheus = "0.14.0"
@@ -52,12 +52,12 @@ alloy = { version = "^1.0.35", features = [
 # tower = "0.4"
 # tower-http = { version = "0.5", features = ["cors", "trace"] }
 blst = "0.3"
-# tokio-test = "0.4"
+tokio-test = "0.4"
 # rand = "0.8"
-# mockall = "0.13"
+mockall = "0.13"
 
 commit-boost = { git = "https://github.com/Commit-Boost/commit-boost-client", branch = "fabric" }
-# # cb-common = { git = "https://github.com/Commit-Boost/commit-boost-client", branch = "fabric" }
+cb-common = { git = "https://github.com/Commit-Boost/commit-boost-client", branch = "fabric" }
 # # cb-signer = { git = "https://github.com/Commit-Boost/commit-boost-client", branch = "fabric" }
 # # cb-tests = { git = "https://github.com/Commit-Boost/commit-boost-client", branch = "fabric" }
 # # commit-boost = { path = "../../commit-boost/commit-boost-client/bin" }

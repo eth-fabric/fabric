@@ -1,0 +1,23 @@
+[package]
+name = "fabric-lookahead"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+test-utils = ["mockall"]
+
+[dependencies]
+eyre = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+alloy = { workspace = true }
+mockall = { workspace = true, optional = true }
+commit-boost = { workspace = true }
+hex = { workspace = true }
+
+[dev-dependencies]
+cb-common = { workspace = true }
+mockall = { workspace = true }
