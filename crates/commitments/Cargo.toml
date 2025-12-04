@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+common = { package = "fabric-common", path = "../common" }
 eyre = { workspace = true }
 jsonrpsee = { workspace = true }
 serde = { workspace = true }

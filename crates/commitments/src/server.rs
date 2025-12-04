@@ -4,7 +4,7 @@ use axum::{Router, routing::get};
 use eyre::Result;
 use jsonrpsee::server::{RpcModule, Server};
 
-use super::metrics::metrics_handler;
+use super::metrics::server_metrics_handler;
 use crate::rpc::CommitmentsRpcServer;
 
 /// Extra info the server harness needs from a handler.
@@ -32,7 +32,7 @@ where
 
     // Spawn metrics server
     tokio::spawn(async move {
-        let app = Router::new().route("/metrics", get(metrics_handler));
+        let app = Router::new().route("/metrics", get(server_metrics_handler));
         match tokio::net::TcpListener::bind(metrics_addr).await {
             Ok(listener) => {
                 if let Err(e) = axum::serve(listener, app).await {

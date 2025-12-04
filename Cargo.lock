@@ -2939,6 +2939,7 @@ dependencies = [
  "alloy",
  "axum 0.8.7",
  "eyre",
+ "fabric-common",
  "jsonrpsee",
  "lazy_static",
  "prometheus",
@@ -2953,6 +2954,7 @@ name = "fabric-common"
 version = "0.1.0"
 dependencies = [
  "eyre",
+ "prometheus",
  "rocksdb",
  "serde",
  "serde_json",
@@ -2972,6 +2974,7 @@ dependencies = [
  "cb-common",
  "commit-boost",
  "eyre",
+ "fabric-common",
  "lazy_static",
  "mockall",
  "prometheus",
