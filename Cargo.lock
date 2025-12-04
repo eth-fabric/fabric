@@ -2962,12 +2962,9 @@ name = "fabric-signing"
 version = "0.1.0"
 dependencies = [
  "alloy",
- "blst",
  "commit-boost",
  "eyre",
- "fabric-commitments",
- "serde",
- "serde_json",
+ "tracing",
 ]
 
 [[package]]
