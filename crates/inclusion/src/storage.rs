@@ -1,14 +1,12 @@
 use alloy::primitives::B256;
+use commit_boost::prelude::BlsPublicKey;
 use commitments::types::SignedCommitment;
 use constraints::types::{Constraint, SignedConstraints, SignedDelegation};
 use eyre::Result;
 use rocksdb::{Direction, IteratorMode};
 use serde::de::DeserializeOwned;
 
-use common::storage::{
-    DatabaseContext,
-    db::{DbOp, TypedDbExt},
-};
+use common::storage::{DatabaseContext, db::TypedDbExt};
 
 use crate::types::SignedCommitmentAndConstraint;
 
@@ -277,9 +275,27 @@ impl CommitmentsDbExt for DatabaseContext {
     }
 }
 
+pub trait LookaheadDbExt {
+    fn put_proposer_bls_key(&self, slot: u64, key: &BlsPublicKey) -> Result<()>;
+    fn get_proposer_bls_key(&self, slot: u64) -> Result<Option<BlsPublicKey>>;
+}
+
+impl LookaheadDbExt for DatabaseContext {
+    fn put_proposer_bls_key(&self, slot: u64, key: &BlsPublicKey) -> Result<()> {
+        let db_key = proposer_key(slot);
+        self.put_json(&db_key, key)
+    }
+
+    fn get_proposer_bls_key(&self, slot: u64) -> Result<Option<BlsPublicKey>> {
+        let key = proposer_key(slot);
+        self.get_json(&key)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use common::storage::db::DbOp;
     use eyre::Result;
     use rocksdb::Options;
     use serde::{Deserialize, Serialize};

@@ -1,0 +1,66 @@
+[package]
+name = "fabric-binaries"
+version = "0.1.0"
+edition = "2024"
+
+# [[bin]]
+# name = "gateway"
+# path = "gateway.rs"
+
+# [[bin]]
+# name = "relay"
+# path = "relay.rs"
+
+# [[bin]]
+# name = "proposer"
+# path = "proposer.rs"
+
+# [[bin]]
+# name = "spammer"
+# path = "spammer.rs"
+
+# [[bin]]
+# name = "simulation-setup"
+# path = "simulation-setup.rs"
+
+# [[bin]]
+# name = "local-signer-module"
+# path = "local_signer_module.rs"
+
+# [[bin]]
+# name = "beacon-mock"
+# path = "beacon_mock.rs"
+
+# [dependencies]
+# common = { package = "fabric-common", path = "../crates/common" }
+# commitments = { package = "fabric-commitments", path = "../crates/commitments" }
+# constraints = { package = "fabric-constraints", path = "../crates/constraints" }
+# gateway = { package = "fabric-gateway", path = "../crates/gateway" }
+# relay = { package = "fabric-relay", path = "../crates/relay" }
+# proposer = { package = "fabric-proposer", path = "../crates/proposer" }
+# cb-common = { workspace = true }
+# cb-signer = { workspace = true }
+# clap = { workspace = true }
+# color-eyre = { workspace = true }
+# indexmap = { workspace = true }
+# rocksdb = { workspace = true }
+# anyhow = { workspace = true }
+# eyre = { workspace = true }
+# tokio = { workspace = true }
+# tracing = { workspace = true }
+# tracing-subscriber = { workspace = true }
+# commit-boost = { workspace = true }
+# jsonrpsee = { workspace = true }
+# alloy = { workspace = true }
+# serde = { workspace = true }
+# serde_json = { workspace = true }
+# toml = { workspace = true }
+# rpassword = "7.0"
+# urc = { workspace = true }
+# eth-keystore = "0.5"
+# prometheus = { workspace = true }
+# lazy_static = { workspace = true }
+# axum = { workspace = true }
+# url = "2.5"
+
+# todo eventually remove
