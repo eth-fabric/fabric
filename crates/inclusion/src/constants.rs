@@ -6,3 +6,6 @@ pub const INCLUSION_CONSTRAINT_TYPE: u64 = 1;
 
 /// Maximum number of constraints per slot
 pub const MAX_CONSTRAINTS_PER_SLOT: usize = 256;
+
+/// Number of slots to query for delegated slots
+pub const DELEGATED_SLOTS_QUERY_RANGE: u64 = 64;

@@ -5,8 +5,12 @@ use std::sync::Arc;
 use tracing::debug;
 
 use commitments::rpc::CommitmentsRpcServer;
-use commitments::types::{CommitmentRequest, FeeInfo, SignedCommitment, SlotInfoResponse};
+use commitments::types::{
+    CommitmentRequest, FeeInfo, Offering, SignedCommitment, SlotInfo, SlotInfoResponse,
+};
+use lookahead::utils::current_slot;
 
+use crate::constants::{DELEGATED_SLOTS_QUERY_RANGE, INCLUSION_COMMITMENT_TYPE};
 use crate::storage::{DelegationsDbExt, InclusionDbExt};
 
 use super::state::GatewayState;
@@ -148,7 +152,53 @@ impl CommitmentsRpcServer for GatewayRpc {
 
     /// Query slots information.
     async fn slots(&self) -> RpcResult<SlotInfoResponse> {
-        todo!()
+        let chain = self
+            .state
+            .config
+            .try_lock()
+            .map_err(|_| {
+                jsonrpsee::types::error::ErrorObject::owned(
+                    -32603, // Internal error
+                    "Failed to access commit config",
+                    Some("Could not acquire lock on commit config".to_string()),
+                )
+            })?
+            .chain;
+
+        // Get current slot
+        let current_slot = current_slot(&chain);
+        debug!("Current slot: {}", current_slot);
+
+        // Query slots this gateway is delegated to
+        let delegated_slots = self
+            .state
+            .db
+            .get_delegations_in_range(current_slot, current_slot + DELEGATED_SLOTS_QUERY_RANGE)
+            .map_err(|e| {
+                jsonrpsee::types::error::ErrorObject::owned(
+                    -32603, // Internal error
+                    "Failed to get delegated slots",
+                    Some(format!("{}", e)),
+                )
+            })?;
+
+        // Build slot info for each delegated slot
+        let mut slots = Vec::new();
+
+        // Create offering with chain ID and commitment type
+        let offering = Offering {
+            chain_id: chain.id().to::<u64>(),
+            commitment_types: vec![INCLUSION_COMMITMENT_TYPE],
+        };
+
+        for (slot, _) in delegated_slots {
+            slots.push(SlotInfo {
+                slot,
+                offerings: vec![offering.clone()],
+            });
+        }
+
+        Ok(SlotInfoResponse { slots })
     }
 
     /// Query current fee information.

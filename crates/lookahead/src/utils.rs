@@ -1,3 +1,5 @@
+use commit_boost::prelude::Chain;
+
 use crate::constants::{SLOT_DURATION_SECONDS, SLOTS_PER_EPOCH};
 
 /// Converts a slot number to its corresponding epoch.
@@ -67,6 +69,10 @@ pub fn time_until_slot(genesis_time: u64, target_slot: u64) -> i64 {
         .as_secs();
 
     slot_start_time as i64 - now as i64
+}
+
+pub fn current_slot(chain: &Chain) -> u64 {
+    current_slot_estimate(chain.genesis_time_sec())
 }
 
 #[cfg(test)]
