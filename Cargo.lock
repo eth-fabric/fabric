@@ -2986,6 +2986,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "fabric-inclusion"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "cb-common",
+ "commit-boost",
+ "eyre",
+ "fabric-commitments",
+ "fabric-common",
+ "fabric-constraints",
+ "lazy_static",
+ "prometheus",
+ "rocksdb",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "fabric-lookahead"
 version = "0.1.0"
 dependencies = [

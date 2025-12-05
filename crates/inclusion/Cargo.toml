@@ -1,0 +1,25 @@
+[package]
+name = "fabric-inclusion"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+common = { package = "fabric-common", path = "../common" }
+commitments = { package = "fabric-commitments", path = "../commitments" }
+constraints = { package = "fabric-constraints", path = "../constraints" }
+eyre = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+alloy = { workspace = true }
+commit-boost = { workspace = true }
+lazy_static = { workspace = true }
+prometheus = { workspace = true }
+tracing = { workspace = true }
+rocksdb = { workspace = true }
+
+[dev-dependencies]
+cb-common = { workspace = true }
+tokio = { workspace = true }
+tempfile = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

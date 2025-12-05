@@ -4,7 +4,7 @@ use eyre::{Context, Result};
 use rocksdb::{DB, Options};
 use std::sync::Arc;
 
-use db::DatabaseContext;
+pub use db::DatabaseContext;
 
 /// Create a RocksDB database at the specified path
 pub fn create_database(database_path: &str) -> Result<Arc<DatabaseContext>> {

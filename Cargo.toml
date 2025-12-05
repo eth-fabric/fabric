@@ -4,7 +4,7 @@ members = [
     "crates/common",
     "crates/commitments",
     "crates/constraints",
-    # "crates/inclusion",
+    "crates/inclusion",
     "crates/lookahead",
     "crates/signing",
     "crates/urc",
