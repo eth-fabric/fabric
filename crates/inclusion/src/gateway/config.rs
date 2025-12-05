@@ -1,31 +1,26 @@
-use alloy::primitives::B256;
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
-
-use commit_boost::prelude::BlsPublicKey;
 
 /// Gateway configuration for inclusion preconfs
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GatewayConfig {
     /// Address of the Commitments RPC server
-    pub rpc_addr: SocketAddr,
+    pub rpc_addr: String,
 
     /// Path to the rocksdb database file location
     pub db_path: String,
 
     /// Address of the Relay server (constraints API)
-    pub relay_addr: SocketAddr,
+    pub relay_addr: String,
     pub relay_api_key: Option<String>,
 
     /// Execution client configuration
-    pub execution_client: SocketAddr,
+    pub execution_client: String,
 
     /// Constraints receivers
-    pub constraints_receivers: Vec<BlsPublicKey>,
-    pub delegate_public_key: BlsPublicKey,
+    pub constraints_receivers: Vec<String>,
 
     /// Module signing ID for this gateway instance
-    pub module_signing_id: B256,
+    pub module_signing_id: String,
 
     // Commitments-specific configuration
     pub log_level: String,
@@ -36,5 +31,5 @@ pub struct GatewayConfig {
     pub delegation_check_interval_seconds: u64,
 
     /// Gateway public key for signing constraints
-    pub gateway_public_key: BlsPublicKey,
+    pub gateway_public_key: String,
 }

@@ -47,6 +47,7 @@ pub trait ConstraintsClient: Send + Sync {
 }
 
 /// HTTP implementation of the Constraints client.
+#[derive(Clone)]
 pub struct HttpConstraintsClient {
     client: Client,
     base_url: String,

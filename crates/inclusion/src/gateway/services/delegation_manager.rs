@@ -4,45 +4,28 @@ use std::time::Duration;
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 
+use crate::constants::DELEGATED_SLOTS_QUERY_RANGE;
 use crate::gateway::state::GatewayState;
 use crate::storage::DelegationsDbExt;
-use crate::{constants::DELEGATED_SLOTS_QUERY_RANGE, gateway::config::GatewayConfig};
-use commit_boost::prelude::Chain;
-use constraints::client::{ConstraintsClient, HttpConstraintsClient};
+use constraints::client::ConstraintsClient;
 use lookahead::utils::current_slot;
 
 /// Delegation manager that monitors delegated slots
 pub struct DelegationManager {
     state: Arc<GatewayState>,
-    constraints_client: HttpConstraintsClient,
-    config: GatewayConfig,
-    chain: Chain,
 }
 
 impl DelegationManager {
     /// Create a new delegation task
-    /// Create a new constraint manager
     pub async fn new(state: Arc<GatewayState>) -> Self {
-        // Client for sending constraints to the relay
-        let constraints_client =
-            HttpConstraintsClient::new(state.relay_url.to_string(), state.api_key.clone());
-
-        // Copy to avoid needing the lock in the future
-        let config = state.config.lock().await.extra.clone();
-        let chain = state.config.lock().await.chain.clone();
-        Self {
-            state,
-            constraints_client,
-            config,
-            chain,
-        }
+        Self { state }
     }
 
     /// Run the delegation task continuously
     pub async fn run(&self) -> Result<()> {
         info!(
             "Starting delegation task with {}s polling interval",
-            self.config.delegation_check_interval_seconds
+            self.state.delegation_check_interval_seconds
         );
 
         loop {
@@ -51,7 +34,7 @@ impl DelegationManager {
             }
 
             sleep(Duration::from_secs(
-                self.config.delegation_check_interval_seconds,
+                self.state.delegation_check_interval_seconds,
             ))
             .await;
         }
@@ -59,7 +42,7 @@ impl DelegationManager {
 
     /// Check delegations for upcoming slots
     async fn update_delegations(&self) -> Result<()> {
-        let current_slot = current_slot(&self.chain);
+        let current_slot = current_slot(&self.state.chain);
         let lookahead_end = current_slot + DELEGATED_SLOTS_QUERY_RANGE;
 
         info!(
@@ -94,14 +77,14 @@ impl DelegationManager {
 
     /// Use the constraints API to get delegations for a specific slot
     async fn get_delegations_from_relay(&self, slot: u64) -> Result<()> {
-        let delegations = self.constraints_client.get_delegations(slot).await?;
+        let delegations = self.state.constraints_client.get_delegations(slot).await?;
 
         // It's assumed there is only one delegation for a given slot
         match delegations.first() {
             Some(delegation) => {
                 info!("Retrieved delegation from relay for slot {}", slot);
 
-                if delegation.message.delegate != self.config.delegate_public_key {
+                if delegation.message.delegate != self.state.gateway_public_key {
                     info!(
                         "Delegation for slot {} does not match gateway public key",
                         slot

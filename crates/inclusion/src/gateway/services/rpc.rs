@@ -21,7 +21,7 @@ pub struct GatewayRpc {
 }
 
 impl GatewayRpc {
-    pub fn new(state: Arc<GatewayState>) -> Self {
+    pub async fn new(state: Arc<GatewayState>) -> Self {
         Self { state }
     }
 }
@@ -72,8 +72,10 @@ impl CommitmentsRpcServer for GatewayRpc {
         // Sign the commitment using ECDSA key for "committer" address
         let signed_commitment = utils::create_signed_commitment(
             &request,
-            self.state.config.clone(),
+            &mut self.state.signer_client.clone(),
             signed_delegation.message.committer,
+            &self.state.module_signing_id,
+            self.state.chain,
         )
         .await
         .map_err(|e| {
@@ -151,21 +153,8 @@ impl CommitmentsRpcServer for GatewayRpc {
 
     /// Query slots information.
     async fn slots(&self) -> RpcResult<SlotInfoResponse> {
-        let chain = self
-            .state
-            .config
-            .try_lock()
-            .map_err(|_| {
-                jsonrpsee::types::error::ErrorObject::owned(
-                    -32603, // Internal error
-                    "Failed to access commit config",
-                    Some("Could not acquire lock on commit config".to_string()),
-                )
-            })?
-            .chain;
-
         // Get current slot
-        let current_slot = current_slot(&chain);
+        let current_slot = current_slot(&self.state.chain);
         debug!("Current slot: {}", current_slot);
 
         // Query slots this gateway is delegated to
@@ -186,7 +175,7 @@ impl CommitmentsRpcServer for GatewayRpc {
 
         // Create offering with chain ID and commitment type
         let offering = Offering {
-            chain_id: chain.id().to::<u64>(),
+            chain_id: self.state.chain.id().to::<u64>(),
             commitment_types: vec![INCLUSION_COMMITMENT_TYPE],
         };
 
@@ -202,7 +191,7 @@ impl CommitmentsRpcServer for GatewayRpc {
 
     /// Query current fee information.
     async fn fee(&self, request: CommitmentRequest) -> RpcResult<FeeInfo> {
-        let fee_info = utils::calculate_fee_info(&request, &self.state)
+        let fee_info = utils::calculate_fee_info(&request, &self.state.execution_client)
             .await
             .map_err(|e| {
                 jsonrpsee::types::error::ErrorObject::owned(

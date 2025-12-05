@@ -1,14 +1,11 @@
-use alloy::transports::http::reqwest::Url;
 use eyre::{Result, WrapErr};
-use std::sync::Arc;
-use tokio::sync::Mutex;
 use tracing::{debug, info};
 
 use alloy::consensus::{SignableTransaction, TxEnvelope};
 use alloy::network::{Ethereum, TransactionBuilder};
 use alloy::primitives::{Address, B256, Bytes, U256};
-use alloy::providers::{Provider, ProviderBuilder};
-use commit_boost::prelude::{BlsPublicKey, StartCommitModuleConfig};
+use alloy::providers::{DynProvider, Provider};
+use commit_boost::prelude::{BlsPublicKey, Chain, commit::client::SignerClient};
 
 use commitments::types::{Commitment, CommitmentRequest, FeeInfo, SignedCommitment};
 use constraints::types::{Constraint, ConstraintsMessage, SignedConstraints};
@@ -19,8 +16,6 @@ use urc::utils::{
 };
 
 use crate::constants::{INCLUSION_COMMITMENT_TYPE, INCLUSION_CONSTRAINT_TYPE};
-use crate::gateway::config::GatewayConfig;
-use crate::gateway::state::GatewayState;
 use crate::types::{FeePayload, InclusionPayload};
 
 /// Helper functions for RPC business logic
@@ -243,7 +238,7 @@ pub fn tx_envelope_to_rpc_request(
 /// `FeeInfo` containing the calculated fee and commitment type
 pub async fn calculate_fee_info(
     request: &CommitmentRequest,
-    state: &GatewayState,
+    execution_client: &DynProvider<Ethereum>,
 ) -> Result<FeeInfo> {
     debug!(
         "Calculating fee for commitment type: {}",
@@ -261,19 +256,8 @@ pub async fn calculate_fee_info(
     let tx_request = tx_envelope_to_rpc_request(&tx_envelope)?;
 
     // 4. Estimate gas required for the transaction using Alloy provider
-    let endpoint = {
-        let cfg = state
-            .config
-            .try_lock()
-            .map_err(|e| eyre::eyre!("Failed to lock config: {}", e))?;
-        cfg.extra.execution_client
-    };
-    let provider = ProviderBuilder::new()
-        .network::<Ethereum>()
-        .connect_http(Url::parse(endpoint.to_string().as_str())?);
-
     let estimated_gas = U256::from(
-        provider
+        execution_client
             .estimate_gas(tx_request)
             .await
             .wrap_err("Failed to estimate gas for transaction")?,
@@ -281,7 +265,7 @@ pub async fn calculate_fee_info(
 
     // 5. Get current gas price
     let gas_price = U256::from(
-        provider
+        execution_client
             .get_gas_price()
             .await
             .wrap_err("Failed to get gas price from execution client node")?,
@@ -347,8 +331,10 @@ pub fn create_constraint_from_commitment_request(
 /// Creates a properly signed commitment using ECDSA
 pub async fn create_signed_commitment(
     request: &CommitmentRequest,
-    commit_config: Arc<Mutex<StartCommitModuleConfig<GatewayConfig>>>,
+    signer_client: &mut SignerClient,
     committer_address: Address,
+    module_signing_id: &B256,
+    chain: Chain,
 ) -> Result<SignedCommitment> {
     let request_hash = get_commitment_request_signing_root(request);
 
@@ -362,17 +348,14 @@ pub async fn create_signed_commitment(
     let commitment_hash = get_commitment_signing_root(&commitment);
 
     // Call the proxy_ecdsa signer
-    let response = {
-        let mut commit_config = commit_config.lock().await;
-        let module_signing_id = commit_config.extra.module_signing_id;
-        signer::call_proxy_ecdsa_signer(
-            &mut *commit_config,
-            commitment_hash,
-            committer_address,
-            &module_signing_id,
-        )
-        .await?
-    };
+    let response = signer::call_proxy_ecdsa_signer(
+        signer_client,
+        commitment_hash,
+        committer_address,
+        module_signing_id,
+        chain,
+    )
+    .await?;
 
     // 6. Construct the SignedCommitment
     let signed_commitment = SignedCommitment {
@@ -435,9 +418,10 @@ pub fn create_valid_signed_transaction() -> Bytes {
 /// Creates a properly signed constraints message using BLS
 pub async fn sign_constraints_message(
     message: &ConstraintsMessage,
-    commit_config: Arc<Mutex<StartCommitModuleConfig<GatewayConfig>>>,
+    signer_client: &mut SignerClient,
     bls_public_key: BlsPublicKey,
     module_signing_id: &B256,
+    chain: Chain,
 ) -> Result<SignedConstraints> {
     debug!("Creating signed constraints with proper BLS signing");
 
@@ -445,16 +429,14 @@ pub async fn sign_constraints_message(
     let signing_root = get_constraints_message_signing_root(message)?;
 
     // Call the proxy_bls signer
-    let response = {
-        let mut commit_config = commit_config.lock().await;
-        signer::call_proxy_bls_signer(
-            &mut *commit_config,
-            signing_root,
-            bls_public_key,
-            module_signing_id,
-        )
-        .await?
-    };
+    let response = signer::call_proxy_bls_signer(
+        signer_client,
+        signing_root,
+        bls_public_key,
+        module_signing_id,
+        chain,
+    )
+    .await?;
     debug!("Received response from proxy_bls: {:?}", response);
 
     let signed_constraints = SignedConstraints {
