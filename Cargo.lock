@@ -2990,12 +2990,15 @@ name = "fabric-inclusion"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "async-trait",
  "cb-common",
  "commit-boost",
  "eyre",
  "fabric-commitments",
  "fabric-common",
  "fabric-constraints",
+ "fabric-lookahead",
+ "jsonrpsee",
  "lazy_static",
  "prometheus",
  "rocksdb",

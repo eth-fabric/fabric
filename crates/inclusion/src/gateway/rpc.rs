@@ -1,58 +1,42 @@
-/// Reference implementation handler that uses your existing `CommitmentsServerState<T>`.
-///
-/// Other implementations can ignore this type completely and define their own
-/// handler structs and state, as long as they implement `CommitmentsRpcServer`.
+use alloy::primitives::B256;
+use async_trait::async_trait;
+use jsonrpsee::core::RpcResult;
+use std::sync::Arc;
+
+use super::state::GatewayState;
+use commitments::rpc::CommitmentsRpcServer;
+use commitments::types::{CommitmentRequest, FeeInfo, SignedCommitment, SlotInfoResponse};
+
 #[derive(Clone)]
-pub struct DefaultCommitmentsRpc<T> {
-    pub state: Arc<CommitmentsServerState<T>>,
+pub struct GatewayRpc {
+    pub state: Arc<GatewayState>,
 }
 
-impl<T> DefaultCommitmentsRpc<T> {
-    pub fn new(state: Arc<CommitmentsServerState<T>>) -> Self {
+impl GatewayRpc {
+    pub fn new(state: Arc<GatewayState>) -> Self {
         Self { state }
     }
 }
 
-/// Implement the generated server trait for the reference handler.
-///
-/// The bodies are left as `todo!()` for now, so you can wire your existing logic
-/// into them later.
+/// Implementation of the CommitmentsRpcServer for inclusion preconfs
 #[async_trait]
-impl<T> CommitmentsRpcServer for DefaultCommitmentsRpc<T>
-where
-    T: GatewayConfig + Send + Sync + 'static,
-{
-    async fn commitment_request(
-        &self,
-        _params: CommitmentRequestParams,
-    ) -> RpcResult<CommitmentRequestResponse> {
-        // Use `self.state` and fill in your logic here.
-        // Map your internal error to `RpcResult` as needed.
+impl CommitmentsRpcServer for GatewayRpc {
+    async fn commitment_request(&self, request: CommitmentRequest) -> RpcResult<SignedCommitment> {
         todo!()
     }
 
-    async fn commitment_result(
-        &self,
-        _params: CommitmentResultParams,
-    ) -> RpcResult<CommitmentResultResponse> {
+    /// Query a previously created commitment result.
+    async fn commitment_result(&self, request_hash: B256) -> RpcResult<SignedCommitment> {
         todo!()
     }
 
-    async fn slots(&self) -> RpcResult<SlotsResponse> {
+    /// Query slots information.
+    async fn slots(&self) -> RpcResult<SlotInfoResponse> {
         todo!()
     }
 
-    async fn fee(
-        &self,
-        _params: FeeParams,
-    ) -> RpcResult<FeeResponse> {
-        todo!()
-    }
-
-    async fn generate_proxy_key(
-        &self,
-        _params: GenerateProxyKeyParams,
-    ) -> RpcResult<GenerateProxyKeyResponse> {
+    /// Query current fee information.
+    async fn fee(&self, request: CommitmentRequest) -> RpcResult<FeeInfo> {
         todo!()
     }
 }
