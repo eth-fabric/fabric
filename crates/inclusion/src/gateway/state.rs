@@ -13,7 +13,7 @@ pub struct GatewayState {
     /// Storage
     pub db: DatabaseContext,
     /// Commit module configuration for commit-boost operations (Arc<Mutex> for thread safety)
-    pub commit_config: Arc<Mutex<StartCommitModuleConfig<GatewayConfig>>>,
+    pub config: Arc<Mutex<StartCommitModuleConfig<GatewayConfig>>>,
     /// Relay URL for constraints communication
     pub relay_url: SocketAddr,
     /// API key for relay authentication
@@ -24,13 +24,13 @@ impl GatewayState {
     /// Create a new commitments server state with the given database contexts and commit config
     pub fn new(
         db: DatabaseContext,
-        commit_config: StartCommitModuleConfig<GatewayConfig>,
+        config: StartCommitModuleConfig<GatewayConfig>,
         relay_url: SocketAddr,
         api_key: Option<String>,
     ) -> Self {
         Self {
             db,
-            commit_config: Arc::new(Mutex::new(commit_config)),
+            config: Arc::new(Mutex::new(config)),
             relay_url,
             api_key,
         }

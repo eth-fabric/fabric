@@ -2998,6 +2998,8 @@ dependencies = [
  "fabric-common",
  "fabric-constraints",
  "fabric-lookahead",
+ "fabric-signing",
+ "fabric-urc",
  "jsonrpsee",
  "lazy_static",
  "prometheus",
