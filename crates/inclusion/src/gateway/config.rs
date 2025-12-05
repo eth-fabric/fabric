@@ -34,4 +34,7 @@ pub struct GatewayConfig {
 
     /// How often to check for new delegations
     pub delegation_check_interval_seconds: u64,
+
+    /// Gateway public key for signing constraints
+    pub gateway_public_key: BlsPublicKey,
 }
