@@ -11,10 +11,9 @@ use commitments::types::{
 use lookahead::utils::current_slot;
 
 use crate::constants::{DELEGATED_SLOTS_QUERY_RANGE, INCLUSION_COMMITMENT_TYPE};
+use crate::gateway::state::GatewayState;
+use crate::gateway::utils;
 use crate::storage::{DelegationsDbExt, InclusionDbExt};
-
-use super::state::GatewayState;
-use super::utils;
 
 #[derive(Clone)]
 pub struct GatewayRpc {

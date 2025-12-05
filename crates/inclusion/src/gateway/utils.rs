@@ -6,14 +6,17 @@ use tracing::{debug, info};
 
 use alloy::consensus::{SignableTransaction, TxEnvelope};
 use alloy::network::{Ethereum, TransactionBuilder};
-use alloy::primitives::{Address, B256, Bytes, U256, keccak256};
+use alloy::primitives::{Address, B256, Bytes, U256};
 use alloy::providers::{Provider, ProviderBuilder};
-use commit_boost::prelude::StartCommitModuleConfig;
+use commit_boost::prelude::{BlsPublicKey, StartCommitModuleConfig};
 
 use commitments::types::{Commitment, CommitmentRequest, FeeInfo, SignedCommitment};
-use constraints::types::Constraint;
+use constraints::types::{Constraint, ConstraintsMessage, SignedConstraints};
 use signing::signer;
-use urc::utils::{get_commitment_request_signing_root, get_commitment_signing_root};
+use urc::utils::{
+    get_commitment_request_signing_root, get_commitment_signing_root,
+    get_constraints_message_signing_root,
+};
 
 use crate::constants::{INCLUSION_COMMITMENT_TYPE, INCLUSION_CONSTRAINT_TYPE};
 use crate::gateway::config::GatewayConfig;
@@ -427,6 +430,42 @@ pub fn create_valid_signed_transaction() -> Bytes {
     let mut encoded_tx = Vec::new();
     tx_envelope.encode_2718(&mut encoded_tx);
     Bytes::from(encoded_tx)
+}
+
+/// Creates a properly signed constraints message using BLS
+pub async fn sign_constraints_message(
+    message: &ConstraintsMessage,
+    commit_config: Arc<Mutex<StartCommitModuleConfig<GatewayConfig>>>,
+    bls_public_key: BlsPublicKey,
+    module_signing_id: &B256,
+) -> Result<SignedConstraints> {
+    debug!("Creating signed constraints with proper BLS signing");
+
+    // Hash the constraints message
+    let signing_root = get_constraints_message_signing_root(message)?;
+
+    // Call the proxy_bls signer
+    let response = {
+        let mut commit_config = commit_config.lock().await;
+        signer::call_proxy_bls_signer(
+            &mut *commit_config,
+            signing_root,
+            bls_public_key,
+            module_signing_id,
+        )
+        .await?
+    };
+    debug!("Received response from proxy_bls: {:?}", response);
+
+    let signed_constraints = SignedConstraints {
+        message: message.clone(),
+        nonce: response.nonce,
+        signing_id: response.module_signing_id,
+        signature: response.signature,
+    };
+
+    debug!("Signed constraints created successfully");
+    Ok(signed_constraints)
 }
 
 #[cfg(test)]

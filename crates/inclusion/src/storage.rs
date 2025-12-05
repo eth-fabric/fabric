@@ -69,7 +69,7 @@ pub fn lookahead_key(slot: u64) -> [u8; 1 + 8] {
 
 /// Key for a constraints posted flag for a specific slot.
 /// Layout: [ 'F' ][ slot_be ]
-pub fn signed_constraints_posted_key(slot: u64) -> [u8; 1 + 8] {
+pub fn signed_constraints_finalized_key(slot: u64) -> [u8; 1 + 8] {
     let mut key = [0u8; 1 + 8];
     key[0] = KIND_SIGNED_CONSTRAINTS_POSTED;
     key[1..].copy_from_slice(&slot.to_be_bytes());
@@ -143,6 +143,7 @@ pub trait DelegationsDbExt {
         start_slot: u64,
         end_slot: u64,
     ) -> Result<Vec<(u64, SignedDelegation)>>;
+    fn is_delegated(&self, slot: u64) -> Result<bool>;
 }
 
 impl DelegationsDbExt for DatabaseContext {
@@ -163,6 +164,10 @@ impl DelegationsDbExt for DatabaseContext {
         end_slot: u64,
     ) -> Result<Vec<(u64, SignedDelegation)>> {
         scan_slot_range_kind::<SignedDelegation>(self, KIND_SIGNED_DELEGATION, start_slot, end_slot)
+    }
+
+    fn is_delegated(&self, slot: u64) -> Result<bool> {
+        Ok(self.get_delegation(slot)?.is_some())
     }
 }
 
@@ -196,8 +201,8 @@ pub trait InclusionDbExt {
         end_slot: u64,
     ) -> Result<Vec<(u64, B256, Constraint)>>;
 
-    fn post_constraints(&self, slot: u64) -> Result<()>;
-    fn constraints_posted(&self, slot: u64) -> Result<Option<bool>>;
+    fn finalize_signed_constraints(&self, slot: u64) -> Result<()>;
+    fn signed_constraints_finalized(&self, slot: u64) -> Result<bool>;
 }
 
 impl InclusionDbExt for DatabaseContext {
@@ -225,14 +230,15 @@ impl InclusionDbExt for DatabaseContext {
         )
     }
 
-    fn post_constraints(&self, slot: u64) -> Result<()> {
-        let key = signed_constraints_posted_key(slot);
+    fn finalize_signed_constraints(&self, slot: u64) -> Result<()> {
+        let key = signed_constraints_finalized_key(slot);
         self.put_json(&key, &true)
     }
 
-    fn constraints_posted(&self, slot: u64) -> Result<Option<bool>> {
-        let key = signed_constraints_posted_key(slot);
-        self.get_json(&key)
+    fn signed_constraints_finalized(&self, slot: u64) -> Result<bool> {
+        let key = signed_constraints_finalized_key(slot);
+        let flag: Option<bool> = self.get_json(&key)?;
+        Ok(flag.unwrap_or(false))
     }
 
     fn store_signed_commitment_and_constraint(
@@ -425,9 +431,9 @@ mod tests {
     }
 
     #[test]
-    fn signed_constraints_posted_key_layout_is_correct() {
+    fn signed_constraints_finalized_key_layout_is_correct() {
         let slot = 999u64;
-        let key = signed_constraints_posted_key(slot);
+        let key = signed_constraints_finalized_key(slot);
 
         assert_eq!(key.len(), 1 + 8);
         assert_eq!(key[0], KIND_SIGNED_CONSTRAINTS_POSTED);

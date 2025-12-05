@@ -75,6 +75,11 @@ pub fn current_slot(chain: &Chain) -> u64 {
     current_slot_estimate(chain.genesis_time_sec())
 }
 
+pub fn time_until_next_slot(chain: &Chain) -> i64 {
+    let genesis_time = chain.genesis_time_sec();
+    time_until_slot(genesis_time, current_slot_estimate(genesis_time) + 1)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
