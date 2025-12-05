@@ -14,8 +14,8 @@ use crate::types::SignedCommitmentAndConstraint;
 const KIND_DELEGATION: u8 = b'D';
 const KIND_CONSTRAINT: u8 = b'K';
 const KIND_COMMITMENT: u8 = b'C';
-const KIND_PROPOSER: u8 = b'P';
-
+const KIND_LOOKAHEAD: u8 = b'L';
+const KIND_CONSTRAINTS_POSTED: u8 = b'P';
 /// Key for a single SignedDelegation.
 /// Layout: [ 'D' ][ slot_be ]
 pub fn delegation_key(slot: u64) -> [u8; 1 + 8] {
@@ -46,13 +46,21 @@ pub fn commitment_key(slot: u64, request_hash: &B256) -> [u8; 1 + 8 + 32] {
 
 /// Key for a proposer BLS public key for a specific slot.
 /// Layout: [ 'P' ][ slot_be ]
-pub fn proposer_key(slot: u64) -> [u8; 1 + 8] {
+pub fn lookahead_key(slot: u64) -> [u8; 1 + 8] {
     let mut key = [0u8; 1 + 8];
-    key[0] = KIND_PROPOSER;
+    key[0] = KIND_LOOKAHEAD;
     key[1..].copy_from_slice(&slot.to_be_bytes());
     key
 }
 
+/// Key for a constraints posted flag for a specific slot.
+/// Layout: [ 'C' ][ slot_be ]
+pub fn constraints_posted_key(slot: u64) -> [u8; 1 + 8] {
+    let mut key = [0u8; 1 + 8];
+    key[0] = KIND_CONSTRAINTS_POSTED;
+    key[1..].copy_from_slice(&slot.to_be_bytes());
+    key
+}
 /// Prefix key for a range starting at a given slot for a given kind.
 /// Layout: [ kind ][ slot_be ]
 pub fn slot_prefix(kind: u8, slot: u64) -> [u8; 1 + 8] {
@@ -152,6 +160,9 @@ pub trait ConstraintsDbExt {
         start_slot: u64,
         end_slot: u64,
     ) -> Result<Vec<(u64, SignedConstraints)>>;
+
+    fn post_constraints(&self, slot: u64) -> Result<()>;
+    fn constraints_posted(&self, slot: u64) -> Result<Option<bool>>;
 }
 
 impl ConstraintsDbExt for DatabaseContext {
@@ -172,6 +183,16 @@ impl ConstraintsDbExt for DatabaseContext {
         end_slot: u64,
     ) -> Result<Vec<(u64, SignedConstraints)>> {
         scan_slot_range_kind::<SignedConstraints>(self, KIND_CONSTRAINT, start_slot, end_slot)
+    }
+
+    fn post_constraints(&self, slot: u64) -> Result<()> {
+        let key = constraints_posted_key(slot);
+        self.put_json(&key, &true)
+    }
+
+    fn constraints_posted(&self, slot: u64) -> Result<Option<bool>> {
+        let key = constraints_posted_key(slot);
+        self.get_json(&key)
     }
 }
 
@@ -282,12 +303,12 @@ pub trait LookaheadDbExt {
 
 impl LookaheadDbExt for DatabaseContext {
     fn put_proposer_bls_key(&self, slot: u64, key: &BlsPublicKey) -> Result<()> {
-        let db_key = proposer_key(slot);
+        let db_key = lookahead_key(slot);
         self.put_json(&db_key, key)
     }
 
     fn get_proposer_bls_key(&self, slot: u64) -> Result<Option<BlsPublicKey>> {
-        let key = proposer_key(slot);
+        let key = lookahead_key(slot);
         self.get_json(&key)
     }
 }
@@ -357,10 +378,10 @@ mod tests {
     #[test]
     fn proposer_key_layout_is_correct() {
         let slot = 999u64;
-        let key = proposer_key(slot);
+        let key = lookahead_key(slot);
 
         assert_eq!(key.len(), 1 + 8);
-        assert_eq!(key[0], KIND_PROPOSER);
+        assert_eq!(key[0], KIND_LOOKAHEAD);
 
         let mut slot_bytes = [0u8; 8];
         slot_bytes.copy_from_slice(&key[1..9]);
@@ -388,6 +409,20 @@ mod tests {
         let mut parsed_hash_bytes = [0u8; 32];
         parsed_hash_bytes.copy_from_slice(&key[9..9 + 32]);
         assert_eq!(parsed_hash_bytes, hash_bytes);
+    }
+
+    #[test]
+    fn constraints_posted_key_layout_is_correct() {
+        let slot = 999u64;
+        let key = constraints_posted_key(slot);
+
+        assert_eq!(key.len(), 1 + 8);
+        assert_eq!(key[0], KIND_CONSTRAINTS_POSTED);
+
+        let mut slot_bytes = [0u8; 8];
+        slot_bytes.copy_from_slice(&key[1..9]);
+        let parsed = u64::from_be_bytes(slot_bytes);
+        assert_eq!(parsed, slot);
     }
 
     #[test]
