@@ -1,3 +1,4 @@
+use alloy::primitives::B256;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
@@ -24,7 +25,7 @@ pub struct GatewayConfig {
     pub delegate_public_key: BlsPublicKey,
 
     /// Module signing ID for this gateway instance
-    pub module_signing_id: String,
+    pub module_signing_id: B256,
 
     // Commitments-specific configuration
     pub log_level: String,

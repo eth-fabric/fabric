@@ -6,46 +6,60 @@ use eyre::Result;
 use rocksdb::{Direction, IteratorMode};
 use serde::de::DeserializeOwned;
 
-use common::storage::{DatabaseContext, db::TypedDbExt};
+use common::storage::{
+    DatabaseContext,
+    db::{DbOp, TypedDbExt},
+};
 
 use crate::types::SignedCommitmentAndConstraint;
 
 /// 1-byte table tags so everything shares the same RocksDB instance.
-const KIND_DELEGATION: u8 = b'D';
-const KIND_CONSTRAINT: u8 = b'K';
-const KIND_COMMITMENT: u8 = b'C';
-const KIND_LOOKAHEAD: u8 = b'L';
-const KIND_CONSTRAINTS_POSTED: u8 = b'P';
+const KIND_SIGNED_DELEGATION: u8 = b'A';
+const KIND_SIGNED_CONSTRAINT: u8 = b'B';
+const KIND_CONSTRAINT: u8 = b'C';
+const KIND_SIGNED_COMMITMENT: u8 = b'D';
+const KIND_LOOKAHEAD: u8 = b'E';
+const KIND_SIGNED_CONSTRAINTS_POSTED: u8 = b'F';
+
 /// Key for a single SignedDelegation.
-/// Layout: [ 'D' ][ slot_be ]
-pub fn delegation_key(slot: u64) -> [u8; 1 + 8] {
+/// Layout: [ 'A' ][ slot_be ]
+pub fn signed_delegation_key(slot: u64) -> [u8; 1 + 8] {
     let mut key = [0u8; 1 + 8];
-    key[0] = KIND_DELEGATION;
+    key[0] = KIND_SIGNED_DELEGATION;
     key[1..].copy_from_slice(&slot.to_be_bytes());
     key
 }
 
 /// Key for a single SignedConstraints.
-/// Layout: [ 'K' ][ slot_be ]
-pub fn constraint_key(slot: u64) -> [u8; 1 + 8] {
+/// Layout: [ 'B' ][ slot_be ]
+pub fn signed_constraint_key(slot: u64) -> [u8; 1 + 8] {
     let mut key = [0u8; 1 + 8];
-    key[0] = KIND_CONSTRAINT;
+    key[0] = KIND_SIGNED_CONSTRAINT;
     key[1..].copy_from_slice(&slot.to_be_bytes());
     key
 }
 
-/// Key for a SignedCommitment (and paired Constraint).
-/// Layout: [ 'C' ][ slot_be ][ request_hash (32 bytes) ]
-pub fn commitment_key(slot: u64, request_hash: &B256) -> [u8; 1 + 8 + 32] {
+/// Key for a single Constraint
+/// Layout: [ 'C' ][ slot_be ]
+pub fn constraint_key(slot: u64, request_hash: &B256) -> [u8; 1 + 8 + 32] {
     let mut key = [0u8; 1 + 8 + 32];
-    key[0] = KIND_COMMITMENT;
+    key[0] = KIND_CONSTRAINT;
     key[1..9].copy_from_slice(&slot.to_be_bytes());
     key[9..].copy_from_slice(request_hash.as_slice());
     key
 }
 
+/// Key for a SignedCommitment (and paired Constraint).
+/// Layout: [ 'D' ][ request_hash (32 bytes) ]
+pub fn signed_commitment_key(request_hash: &B256) -> [u8; 1 + 32] {
+    let mut key = [0u8; 1 + 32];
+    key[0] = KIND_SIGNED_COMMITMENT;
+    key[1..].copy_from_slice(request_hash.as_slice());
+    key
+}
+
 /// Key for a proposer BLS public key for a specific slot.
-/// Layout: [ 'P' ][ slot_be ]
+/// Layout: [ 'E' ][ slot_be ]
 pub fn lookahead_key(slot: u64) -> [u8; 1 + 8] {
     let mut key = [0u8; 1 + 8];
     key[0] = KIND_LOOKAHEAD;
@@ -54,10 +68,10 @@ pub fn lookahead_key(slot: u64) -> [u8; 1 + 8] {
 }
 
 /// Key for a constraints posted flag for a specific slot.
-/// Layout: [ 'C' ][ slot_be ]
-pub fn constraints_posted_key(slot: u64) -> [u8; 1 + 8] {
+/// Layout: [ 'F' ][ slot_be ]
+pub fn signed_constraints_posted_key(slot: u64) -> [u8; 1 + 8] {
     let mut key = [0u8; 1 + 8];
-    key[0] = KIND_CONSTRAINTS_POSTED;
+    key[0] = KIND_SIGNED_CONSTRAINTS_POSTED;
     key[1..].copy_from_slice(&slot.to_be_bytes());
     key
 }
@@ -122,7 +136,7 @@ where
     Ok(out)
 }
 pub trait DelegationsDbExt {
-    fn put_delegation(&self, delegation: &SignedDelegation) -> Result<()>;
+    fn store_delegation(&self, delegation: &SignedDelegation) -> Result<()>;
     fn get_delegation(&self, slot: u64) -> Result<Option<SignedDelegation>>;
     fn get_delegations_in_range(
         &self,
@@ -132,14 +146,14 @@ pub trait DelegationsDbExt {
 }
 
 impl DelegationsDbExt for DatabaseContext {
-    fn put_delegation(&self, delegation: &SignedDelegation) -> Result<()> {
+    fn store_delegation(&self, delegation: &SignedDelegation) -> Result<()> {
         let slot = delegation.message.slot; // adjust to your real field
-        let key = delegation_key(slot);
+        let key = signed_delegation_key(slot);
         self.put_json(&key, delegation)
     }
 
     fn get_delegation(&self, slot: u64) -> Result<Option<SignedDelegation>> {
-        let key = delegation_key(slot);
+        let key = signed_delegation_key(slot);
         self.get_json(&key)
     }
 
@@ -148,55 +162,21 @@ impl DelegationsDbExt for DatabaseContext {
         start_slot: u64,
         end_slot: u64,
     ) -> Result<Vec<(u64, SignedDelegation)>> {
-        scan_slot_range_kind::<SignedDelegation>(self, KIND_DELEGATION, start_slot, end_slot)
+        scan_slot_range_kind::<SignedDelegation>(self, KIND_SIGNED_DELEGATION, start_slot, end_slot)
     }
 }
 
-pub trait ConstraintsDbExt {
-    fn put_signed_constraints(&self, constraint: &SignedConstraints) -> Result<()>;
+pub trait InclusionDbExt {
+    fn store_signed_constraints(&self, constraint: &SignedConstraints) -> Result<()>;
+
     fn get_signed_constraints(&self, slot: u64) -> Result<Option<SignedConstraints>>;
+
     fn get_signed_constraints_in_range(
         &self,
         start_slot: u64,
         end_slot: u64,
     ) -> Result<Vec<(u64, SignedConstraints)>>;
 
-    fn post_constraints(&self, slot: u64) -> Result<()>;
-    fn constraints_posted(&self, slot: u64) -> Result<Option<bool>>;
-}
-
-impl ConstraintsDbExt for DatabaseContext {
-    fn put_signed_constraints(&self, constraint: &SignedConstraints) -> Result<()> {
-        let slot = constraint.message.slot;
-        let key = constraint_key(slot);
-        self.put_json(&key, constraint)
-    }
-
-    fn get_signed_constraints(&self, slot: u64) -> Result<Option<SignedConstraints>> {
-        let key = constraint_key(slot);
-        self.get_json(&key)
-    }
-
-    fn get_signed_constraints_in_range(
-        &self,
-        start_slot: u64,
-        end_slot: u64,
-    ) -> Result<Vec<(u64, SignedConstraints)>> {
-        scan_slot_range_kind::<SignedConstraints>(self, KIND_CONSTRAINT, start_slot, end_slot)
-    }
-
-    fn post_constraints(&self, slot: u64) -> Result<()> {
-        let key = constraints_posted_key(slot);
-        self.put_json(&key, &true)
-    }
-
-    fn constraints_posted(&self, slot: u64) -> Result<Option<bool>> {
-        let key = constraints_posted_key(slot);
-        self.get_json(&key)
-    }
-}
-
-pub trait CommitmentsDbExt {
     fn store_signed_commitment_and_constraint(
         &self,
         slot: u64,
@@ -205,20 +185,56 @@ pub trait CommitmentsDbExt {
         constraint: &Constraint,
     ) -> Result<()>;
 
-    fn get_signed_commitment_and_constraint(
+    fn get_signed_commitment(
         &self,
-        slot: u64,
         request_hash: &B256,
     ) -> Result<Option<SignedCommitmentAndConstraint>>;
 
-    fn get_signed_commitment_and_constraints_in_range(
+    fn get_constraints_in_range(
         &self,
         start_slot: u64,
         end_slot: u64,
-    ) -> Result<Vec<(u64, B256, SignedCommitmentAndConstraint)>>;
+    ) -> Result<Vec<(u64, B256, Constraint)>>;
+
+    fn post_constraints(&self, slot: u64) -> Result<()>;
+    fn constraints_posted(&self, slot: u64) -> Result<Option<bool>>;
 }
 
-impl CommitmentsDbExt for DatabaseContext {
+impl InclusionDbExt for DatabaseContext {
+    fn store_signed_constraints(&self, constraint: &SignedConstraints) -> Result<()> {
+        let slot = constraint.message.slot;
+        let key = signed_constraint_key(slot);
+        self.put_json(&key, constraint)
+    }
+
+    fn get_signed_constraints(&self, slot: u64) -> Result<Option<SignedConstraints>> {
+        let key = signed_constraint_key(slot);
+        self.get_json(&key)
+    }
+
+    fn get_signed_constraints_in_range(
+        &self,
+        start_slot: u64,
+        end_slot: u64,
+    ) -> Result<Vec<(u64, SignedConstraints)>> {
+        scan_slot_range_kind::<SignedConstraints>(
+            self,
+            KIND_SIGNED_CONSTRAINT,
+            start_slot,
+            end_slot,
+        )
+    }
+
+    fn post_constraints(&self, slot: u64) -> Result<()> {
+        let key = signed_constraints_posted_key(slot);
+        self.put_json(&key, &true)
+    }
+
+    fn constraints_posted(&self, slot: u64) -> Result<Option<bool>> {
+        let key = signed_constraints_posted_key(slot);
+        self.get_json(&key)
+    }
+
     fn store_signed_commitment_and_constraint(
         &self,
         slot: u64,
@@ -226,35 +242,39 @@ impl CommitmentsDbExt for DatabaseContext {
         commitment: &SignedCommitment,
         constraint: &Constraint,
     ) -> Result<()> {
-        let commitment_key = commitment_key(slot, request_hash);
+        let signed_commitment_key = signed_commitment_key(request_hash);
+        let constraint_key = constraint_key(slot, request_hash);
 
-        let signed_commitment_and_constraint = SignedCommitmentAndConstraint {
-            commitment: commitment.clone(),
-            constraint: constraint.clone(),
-        };
-
-        self.put_json(&commitment_key, &signed_commitment_and_constraint)
+        self.batch_write_raw(vec![
+            DbOp::Put {
+                key: signed_commitment_key.to_vec(),
+                value: serde_json::to_vec(commitment)?,
+            },
+            DbOp::Put {
+                key: constraint_key.to_vec(),
+                value: serde_json::to_vec(constraint)?,
+            },
+        ])
     }
 
-    fn get_signed_commitment_and_constraint(
+    fn get_signed_commitment(
         &self,
-        slot: u64,
         request_hash: &B256,
     ) -> Result<Option<SignedCommitmentAndConstraint>> {
-        let key = commitment_key(slot, request_hash);
+        let key = signed_commitment_key(request_hash);
         self.get_json(&key)
     }
 
-    fn get_signed_commitment_and_constraints_in_range(
+    fn get_constraints_in_range(
         &self,
         start_slot: u64,
         end_slot: u64,
-    ) -> Result<Vec<(u64, B256, SignedCommitmentAndConstraint)>> {
+    ) -> Result<Vec<(u64, B256, Constraint)>> {
         if start_slot > end_slot {
             return Ok(Vec::new());
         }
 
-        let start_key = slot_prefix(KIND_COMMITMENT, start_slot);
+        let start_key = slot_prefix(KIND_CONSTRAINT, start_slot);
         let inner: &rocksdb::DB = &*self.inner();
 
         let iter = inner.iterator(IteratorMode::From(&start_key, Direction::Forward));
@@ -268,7 +288,7 @@ impl CommitmentsDbExt for DatabaseContext {
             }
 
             // kind at 0
-            if key[0] != KIND_COMMITMENT {
+            if key[0] != KIND_CONSTRAINT {
                 break;
             }
 
@@ -288,7 +308,7 @@ impl CommitmentsDbExt for DatabaseContext {
             hash_bytes.copy_from_slice(&key[9..9 + 32]);
             let request_hash = B256::from(hash_bytes);
 
-            let result = serde_json::from_slice::<SignedCommitmentAndConstraint>(&value)?;
+            let result = serde_json::from_slice::<Constraint>(&value)?;
             out.push((slot, request_hash, result));
         }
 
@@ -297,12 +317,12 @@ impl CommitmentsDbExt for DatabaseContext {
 }
 
 pub trait LookaheadDbExt {
-    fn put_proposer_bls_key(&self, slot: u64, key: &BlsPublicKey) -> Result<()>;
+    fn store_proposer_bls_key(&self, slot: u64, key: &BlsPublicKey) -> Result<()>;
     fn get_proposer_bls_key(&self, slot: u64) -> Result<Option<BlsPublicKey>>;
 }
 
 impl LookaheadDbExt for DatabaseContext {
-    fn put_proposer_bls_key(&self, slot: u64, key: &BlsPublicKey) -> Result<()> {
+    fn store_proposer_bls_key(&self, slot: u64, key: &BlsPublicKey) -> Result<()> {
         let db_key = lookahead_key(slot);
         self.put_json(&db_key, key)
     }
@@ -348,12 +368,12 @@ mod tests {
     }
 
     #[test]
-    fn delegation_key_layout_is_correct() {
+    fn signed_delegation_key_layout_is_correct() {
         let slot = 42u64;
-        let key = delegation_key(slot);
+        let key = signed_delegation_key(slot);
 
         assert_eq!(key.len(), 1 + 8);
-        assert_eq!(key[0], KIND_DELEGATION);
+        assert_eq!(key[0], KIND_SIGNED_DELEGATION);
 
         let mut slot_bytes = [0u8; 8];
         slot_bytes.copy_from_slice(&key[1..9]);
@@ -362,12 +382,12 @@ mod tests {
     }
 
     #[test]
-    fn constraint_key_layout_is_correct() {
+    fn signed_constraint_key_layout_is_correct() {
         let slot = 123u64;
-        let key = constraint_key(slot);
+        let key = signed_constraint_key(slot);
 
         assert_eq!(key.len(), 1 + 8);
-        assert_eq!(key[0], KIND_CONSTRAINT);
+        assert_eq!(key[0], KIND_SIGNED_CONSTRAINT);
 
         let mut slot_bytes = [0u8; 8];
         slot_bytes.copy_from_slice(&key[1..9]);
@@ -390,34 +410,27 @@ mod tests {
     }
 
     #[test]
-    fn commitment_key_layout_is_correct() {
-        let slot = 7u64;
+    fn signed_commitment_key_layout_is_correct() {
         let hash_bytes = [0x11u8; 32];
         let request_hash = B256::from(hash_bytes);
-        let key = commitment_key(slot, &request_hash);
+        let key = signed_commitment_key(&request_hash);
 
-        assert_eq!(key.len(), 1 + 8 + 32);
-        assert_eq!(key[0], KIND_COMMITMENT);
-
-        // slot
-        let mut slot_bytes = [0u8; 8];
-        slot_bytes.copy_from_slice(&key[1..9]);
-        let parsed_slot = u64::from_be_bytes(slot_bytes);
-        assert_eq!(parsed_slot, slot);
+        assert_eq!(key.len(), 1 + 32);
+        assert_eq!(key[0], KIND_SIGNED_COMMITMENT);
 
         // hash
         let mut parsed_hash_bytes = [0u8; 32];
-        parsed_hash_bytes.copy_from_slice(&key[9..9 + 32]);
+        parsed_hash_bytes.copy_from_slice(&key[1..33]);
         assert_eq!(parsed_hash_bytes, hash_bytes);
     }
 
     #[test]
-    fn constraints_posted_key_layout_is_correct() {
+    fn signed_constraints_posted_key_layout_is_correct() {
         let slot = 999u64;
-        let key = constraints_posted_key(slot);
+        let key = signed_constraints_posted_key(slot);
 
         assert_eq!(key.len(), 1 + 8);
-        assert_eq!(key[0], KIND_CONSTRAINTS_POSTED);
+        assert_eq!(key[0], KIND_SIGNED_CONSTRAINTS_POSTED);
 
         let mut slot_bytes = [0u8; 8];
         slot_bytes.copy_from_slice(&key[1..9]);
@@ -428,10 +441,10 @@ mod tests {
     #[test]
     fn slot_prefix_layout_is_correct() {
         let slot = 1234u64;
-        let key = slot_prefix(KIND_DELEGATION, slot);
+        let key = slot_prefix(KIND_SIGNED_DELEGATION, slot);
 
         assert_eq!(key.len(), 1 + 8);
-        assert_eq!(key[0], KIND_DELEGATION);
+        assert_eq!(key[0], KIND_SIGNED_DELEGATION);
 
         let mut slot_bytes = [0u8; 8];
         slot_bytes.copy_from_slice(&key[1..9]);
@@ -443,7 +456,7 @@ mod tests {
     fn scan_slot_range_kind_empty_db_returns_empty() -> Result<()> {
         let db = new_temp_db()?;
 
-        let result = super::scan_slot_range_kind::<TestValue>(&db, KIND_DELEGATION, 10, 20)?;
+        let result = super::scan_slot_range_kind::<TestValue>(&db, KIND_SIGNED_DELEGATION, 10, 20)?;
 
         assert!(result.is_empty());
         Ok(())
@@ -453,7 +466,7 @@ mod tests {
     fn scan_slot_range_kind_with_start_greater_than_end_is_empty() -> Result<()> {
         let db = new_temp_db()?;
 
-        let result = super::scan_slot_range_kind::<TestValue>(&db, KIND_DELEGATION, 20, 10)?;
+        let result = super::scan_slot_range_kind::<TestValue>(&db, KIND_SIGNED_DELEGATION, 20, 10)?;
 
         assert!(result.is_empty());
         Ok(())
@@ -471,33 +484,35 @@ mod tests {
         let v4 = make_test_value(4);
 
         // Delegations at slots 5 and 15
-        db.put_json(&delegation_key(5), &v1)?;
-        db.put_json(&delegation_key(15), &v2)?;
+        db.put_json(&signed_delegation_key(5), &v1)?;
+        db.put_json(&signed_delegation_key(15), &v2)?;
 
         // Constraints at slots 10 and 20
-        db.put_json(&constraint_key(10), &v3)?;
-        db.put_json(&constraint_key(20), &v4)?;
+        db.put_json(&signed_constraint_key(10), &v3)?;
+        db.put_json(&signed_constraint_key(20), &v4)?;
 
         // Scan delegations in [0, 100]
-        let delegations = super::scan_slot_range_kind::<TestValue>(&db, KIND_DELEGATION, 0, 100)?;
+        let delegations =
+            super::scan_slot_range_kind::<TestValue>(&db, KIND_SIGNED_DELEGATION, 0, 100)?;
         assert_eq!(delegations.len(), 2);
         assert_eq!(delegations[0], (5, v1));
         assert_eq!(delegations[1], (15, v2.clone()));
 
         // Scan constraints in [0, 100]
-        let constraints = super::scan_slot_range_kind::<TestValue>(&db, KIND_CONSTRAINT, 0, 100)?;
+        let constraints =
+            super::scan_slot_range_kind::<TestValue>(&db, KIND_SIGNED_CONSTRAINT, 0, 100)?;
         assert_eq!(constraints.len(), 2);
         assert_eq!(constraints[0], (10, v3));
         assert_eq!(constraints[1], (20, v4));
 
         // Scan delegations in [6, 14] should only return slot 15? No, that is out of range.
         let delegations_mid =
-            super::scan_slot_range_kind::<TestValue>(&db, KIND_DELEGATION, 6, 14)?;
+            super::scan_slot_range_kind::<TestValue>(&db, KIND_SIGNED_DELEGATION, 6, 14)?;
         assert_eq!(delegations_mid.len(), 0);
 
         // Scan delegations in [6, 15] should return only slot 15.
         let delegations_mid2 =
-            super::scan_slot_range_kind::<TestValue>(&db, KIND_DELEGATION, 6, 15)?;
+            super::scan_slot_range_kind::<TestValue>(&db, KIND_SIGNED_DELEGATION, 6, 15)?;
         assert_eq!(delegations_mid2.len(), 1);
         assert_eq!(delegations_mid2[0], (15, v2.clone()));
 
@@ -505,10 +520,10 @@ mod tests {
     }
 
     #[test]
-    fn commitments_range_scan_works_with_mixed_data() -> Result<()> {
+    fn constraints_range_scan_works_with_mixed_data() -> Result<()> {
         let db = new_temp_db()?;
 
-        // We will emulate SignedCommitment with TestValue here, stored under commitment keys.
+        // We will emulate Constraint with TestValue here, stored under constraint keys.
         let c1 = make_test_value(101);
         let c2 = make_test_value(102);
         let c3 = make_test_value(103);
@@ -518,9 +533,9 @@ mod tests {
         let h3 = B256::from([0x03u8; 32]);
 
         // Slots: 10, 20, 30
-        let key1 = commitment_key(10, &h1);
-        let key2 = commitment_key(20, &h2);
-        let key3 = commitment_key(30, &h3);
+        let key1 = constraint_key(10, &h1);
+        let key2 = constraint_key(20, &h2);
+        let key3 = constraint_key(30, &h3);
 
         // Store as raw JSON values.
         let v1 = serde_json::to_vec(&c1)?;
@@ -541,8 +556,8 @@ mod tests {
             },
         ])?;
 
-        // Now use the same logic as get_signed_commitment_and_constraints_in_range, but decode as TestValue.
-        let start_key = slot_prefix(KIND_COMMITMENT, 10);
+        // Now use the same logic as get_constraints_in_range, but decode as TestValue.
+        let start_key = slot_prefix(KIND_CONSTRAINT, 10);
         let inner: &rocksdb::DB = &*db.inner();
         let iter = inner.iterator(IteratorMode::From(&start_key, Direction::Forward));
 
@@ -557,7 +572,7 @@ mod tests {
                 continue;
             }
 
-            if key[0] != KIND_COMMITMENT {
+            if key[0] != KIND_CONSTRAINT {
                 break;
             }
 

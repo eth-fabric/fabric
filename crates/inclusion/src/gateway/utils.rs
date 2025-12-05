@@ -16,6 +16,7 @@ use signing::signer;
 use urc::utils::{get_commitment_request_signing_root, get_commitment_signing_root};
 
 use crate::constants::{INCLUSION_COMMITMENT_TYPE, INCLUSION_CONSTRAINT_TYPE};
+use crate::gateway::config::GatewayConfig;
 use crate::gateway::state::GatewayState;
 use crate::types::{FeePayload, InclusionPayload};
 
@@ -341,11 +342,10 @@ pub fn create_constraint_from_commitment_request(
 }
 
 /// Creates a properly signed commitment using ECDSA
-pub async fn create_signed_commitment<T>(
+pub async fn create_signed_commitment(
     request: &CommitmentRequest,
-    commit_config: Arc<Mutex<StartCommitModuleConfig<T>>>,
+    commit_config: Arc<Mutex<StartCommitModuleConfig<GatewayConfig>>>,
     committer_address: Address,
-    module_signing_id: &B256,
 ) -> Result<SignedCommitment> {
     let request_hash = get_commitment_request_signing_root(request);
 
@@ -361,11 +361,12 @@ pub async fn create_signed_commitment<T>(
     // Call the proxy_ecdsa signer
     let response = {
         let mut commit_config = commit_config.lock().await;
+        let module_signing_id = commit_config.extra.module_signing_id;
         signer::call_proxy_ecdsa_signer(
             &mut *commit_config,
             commitment_hash,
             committer_address,
-            module_signing_id,
+            &module_signing_id,
         )
         .await?
     };
