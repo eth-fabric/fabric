@@ -203,6 +203,15 @@ impl CommitmentsRpcServer for GatewayRpc {
 
     /// Query current fee information.
     async fn fee(&self, request: CommitmentRequest) -> RpcResult<FeeInfo> {
-        todo!()
+        let fee_info = utils::calculate_fee_info(&request, &self.state)
+            .await
+            .map_err(|e| {
+                jsonrpsee::types::error::ErrorObject::owned(
+                    -32603, // Internal error
+                    "Failed to calculate fee info",
+                    Some(format!("{}", e)),
+                )
+            })?;
+        Ok(fee_info)
     }
 }
