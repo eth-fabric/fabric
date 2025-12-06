@@ -8,7 +8,7 @@ pub const INCLUSION_CONSTRAINT_TYPE: u64 = 1;
 pub const MAX_CONSTRAINTS_PER_SLOT: usize = 256;
 
 /// Number of slots to query for delegated slots
-pub const DELEGATED_SLOTS_QUERY_RANGE: u64 = 64;
+pub const LOOKAHEAD_WINDOW_SIZE: u64 = 64;
 
 /// Number of seconds before the next slot to trigger posting SignedConstraints
 pub const CONSTRAINT_TRIGGER_OFFSET: i64 = 2;

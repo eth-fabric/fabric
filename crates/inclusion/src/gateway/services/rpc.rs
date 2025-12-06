@@ -10,7 +10,7 @@ use commitments::types::{
 };
 use lookahead::utils::current_slot;
 
-use crate::constants::{DELEGATED_SLOTS_QUERY_RANGE, INCLUSION_COMMITMENT_TYPE};
+use crate::constants::{INCLUSION_COMMITMENT_TYPE, LOOKAHEAD_WINDOW_SIZE};
 use crate::gateway::services::state::GatewayState;
 use crate::gateway::utils;
 use crate::storage::{DelegationsDbExt, InclusionDbExt};
@@ -161,7 +161,7 @@ impl CommitmentsRpcServer for GatewayRpc {
         let delegated_slots = self
             .state
             .db
-            .get_delegations_in_range(current_slot, current_slot + DELEGATED_SLOTS_QUERY_RANGE)
+            .get_delegations_in_range(current_slot, current_slot + LOOKAHEAD_WINDOW_SIZE)
             .map_err(|e| {
                 jsonrpsee::types::error::ErrorObject::owned(
                     -32603, // Internal error

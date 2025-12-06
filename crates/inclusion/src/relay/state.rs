@@ -1,11 +1,11 @@
 use alloy::primitives::B256;
 use commit_boost::prelude::{Chain, StartCommitModuleConfig};
 
+use common::storage::DatabaseContext;
 use lookahead::{
     beacon_client::{BeaconApiClient, ReqwestClient},
     types::BeaconApiConfig,
 };
-use common::storage::DatabaseContext;
 
 use crate::relay::config::RelayConfig;
 

@@ -4,7 +4,7 @@ use std::time::Duration;
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 
-use crate::constants::DELEGATED_SLOTS_QUERY_RANGE;
+use crate::constants::LOOKAHEAD_WINDOW_SIZE;
 use crate::gateway::services::state::GatewayState;
 use crate::storage::DelegationsDbExt;
 use constraints::client::ConstraintsClient;
@@ -43,7 +43,7 @@ impl DelegationManager {
     /// Check delegations for upcoming slots
     async fn update_delegations(&self) -> Result<()> {
         let current_slot = current_slot(&self.state.chain);
-        let lookahead_end = current_slot + DELEGATED_SLOTS_QUERY_RANGE;
+        let lookahead_end = current_slot + LOOKAHEAD_WINDOW_SIZE;
 
         info!(
             "Checking delegations for slots {} to {}",
