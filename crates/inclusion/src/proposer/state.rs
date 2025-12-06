@@ -27,7 +27,7 @@ pub struct ProposerState {
     pub gateway_public_key: BlsPublicKey,
     /// Gateway committer EOA address
     pub gateway_address: Address,
-    /// Module signing ID for this gateway instance
+    /// Module signing ID for inclusion preconfs
     pub module_signing_id: B256,
     /// Chain ID
     pub chain: Chain,

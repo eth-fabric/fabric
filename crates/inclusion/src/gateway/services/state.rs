@@ -28,7 +28,7 @@ pub struct GatewayState {
     pub gateway_public_key: BlsPublicKey,
     /// Constraints receivers whitelist
     pub constraints_receivers: Vec<BlsPublicKey>,
-    /// Module signing ID for this gateway instance
+    /// Module signing ID for inclusion preconfs
     pub module_signing_id: B256,
     /// Chain ID
     pub chain: Chain,
