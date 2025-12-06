@@ -1,16 +1,28 @@
 use std::sync::Arc;
 
+use alloy::primitives::keccak256;
 use async_trait::async_trait;
 use constraints::{
     api::ConstraintsApi,
     types::{
-        ConstraintCapabilities, ConstraintsResponse, DelegationsResponse, SignedConstraints,
-        SignedDelegation, SubmitBlockRequestWithProofs,
+        AuthorizationContext, ConstraintCapabilities, ConstraintsResponse, DelegationsResponse,
+        SignedConstraints, SignedDelegation, SubmitBlockRequestWithProofs,
     },
 };
-use eyre::Result;
+use eyre::{Result, eyre};
+use lookahead::utils::current_slot;
+use signing::signer::verify_bls;
+use tracing::info;
 
-use crate::relay::state::RelayState;
+use crate::relay::{
+    state::RelayState,
+    utils::{
+        handle_proof_validation, validate_constraints_message, validate_delegation_message,
+        validate_is_gateway, validate_is_proposer, verify_constraints_signature,
+        verify_delegation_signature,
+    },
+};
+use crate::storage::{DelegationsDbExt, InclusionDbExt};
 
 #[derive(Clone)]
 pub struct RelayServer {
@@ -25,29 +37,135 @@ impl RelayServer {
 
 #[async_trait]
 impl ConstraintsApi for RelayServer {
-    /// GET /capabilities
-    async fn get_capabilities(&self) -> Result<ConstraintCapabilities> {
-        todo!()
-    }
-
     /// POST /constraints
     async fn post_constraints(&self, signed_constraints: SignedConstraints) -> Result<()> {
-        todo!()
+        // Validate constraints message structure
+        validate_constraints_message(&signed_constraints.message, &self.state.chain)?;
+
+        // Verify BLS signature using the delegate public key from the message
+        verify_constraints_signature(&signed_constraints, &self.state.chain)?;
+
+        // Verify a delegation exists and is for the correct gateway
+        validate_is_gateway(
+            &signed_constraints.message.delegate,
+            signed_constraints.message.slot,
+            &self.state.db,
+        )?;
+
+        // Store signed constraints in database
+        self.state
+            .db
+            .store_signed_constraints(&signed_constraints)?;
+
+        Ok(())
     }
 
     /// GET /constraints
-    async fn get_constraints(&self, slot: u64) -> Result<ConstraintsResponse> {
-        todo!()
+    async fn get_constraints(
+        &self,
+        slot: u64,
+        auth: AuthorizationContext,
+    ) -> Result<ConstraintsResponse> {
+        // Get current slot to check if target slot has passed
+        let current_slot = current_slot(&self.state.chain);
+
+        // If we're at slot_target + 1 or beyond, bypass authentication
+        if current_slot > slot {
+            // Simply fetch and return all constraints for this slot
+            let signed_constraints = self.state.db.get_signed_constraints(slot)?;
+            match signed_constraints {
+                Some(signed_constraints) => {
+                    return Ok(ConstraintsResponse {
+                        constraints: vec![signed_constraints],
+                    });
+                }
+                None => {
+                    return Ok(ConstraintsResponse {
+                        constraints: vec![],
+                    });
+                }
+            }
+        }
+
+        // Slot has not passed yet - enforce authentication
+        // Compute slot hash for signature verification
+        let slot_hash = keccak256(&slot.to_be_bytes());
+
+        // Verify caller's signature against the slot hash using standardized commit-boost verification
+        if !verify_bls(
+            self.state.chain,
+            &auth.public_key,
+            &slot_hash,
+            &auth.signature,
+            &auth.signing_id,
+            auth.nonce,
+        ) {
+            return Err(eyre!("Invalid authorization signature for slot {}", slot));
+        }
+
+        // Get signed constraints from database
+        let signed_constraints = self
+            .state
+            .db
+            .get_signed_constraints(slot)?
+            .ok_or(eyre!("No signed constraints found for slot {}", slot))?;
+
+        // Verify the caller is part of the receivers list
+        if !signed_constraints
+            .message
+            .receivers
+            .contains(&auth.public_key)
+        {
+            return Err(eyre!(
+                "Caller is not part of the receivers list for slot {}",
+                slot
+            ));
+        }
+
+        Ok(ConstraintsResponse {
+            constraints: vec![signed_constraints],
+        })
     }
 
     /// POST /delegation
     async fn post_delegation(&self, signed_delegation: SignedDelegation) -> Result<()> {
-        todo!()
+        // Validate delegation message is for a future slot
+        validate_delegation_message(&signed_delegation.message, &self.state.chain)?;
+
+        // Verify delegation was signed by proposer
+        verify_delegation_signature(&signed_delegation, &self.state.chain)?;
+
+        // Validate proposer is scheduled for this slot
+        validate_is_proposer(
+            &signed_delegation.message.proposer,
+            signed_delegation.message.slot,
+            &self.state.db,
+        )?;
+
+        // Check for existing delegation to prevent equivocation
+        if self.state.db.is_delegated(signed_delegation.message.slot)? {
+            return Err(eyre!(
+                "Delegation already exists for slot {}",
+                signed_delegation.message.slot
+            ));
+        }
+
+        // Store delegation in database
+        self.state.db.store_delegation(&signed_delegation)?;
+
+        Ok(())
     }
 
     /// GET /delegations/{slot}
     async fn get_delegations(&self, slot: u64) -> Result<DelegationsResponse> {
-        todo!()
+        let delegation = self
+            .state
+            .db
+            .get_delegation(slot)?
+            .ok_or(eyre!("No delegation found for slot {}", slot))?;
+        Ok(DelegationsResponse {
+            delegations: vec![delegation],
+        })
     }
 
     /// POST /blocks_with_proofs
@@ -55,11 +173,33 @@ impl ConstraintsApi for RelayServer {
         &self,
         blocks_with_proofs: SubmitBlockRequestWithProofs,
     ) -> Result<()> {
-        todo!()
+        // Get the slot
+        let slot = blocks_with_proofs.slot();
+
+        // Fetch constraints from database for the slot
+        let signed_constraints = self
+            .state
+            .db
+            .get_signed_constraints(slot)?
+            .ok_or(eyre!("No signed constraints found for slot {}", slot))?;
+
+        handle_proof_validation(&blocks_with_proofs, signed_constraints)?;
+
+        // Convert back to block request without proofs
+        let block_request = blocks_with_proofs.into_block_request();
+
+        // Make the request to the downstream relay
+        // self.state.downstream_relay.post_block_request(block_request).await?;
+        Ok(())
+    }
+
+    /// GET /capabilities
+    async fn get_capabilities(&self) -> Result<ConstraintCapabilities> {
+        Ok(self.state.constraint_capabilities.clone())
     }
 
     /// GET /health
     async fn health_check(&self) -> Result<bool> {
-        todo!()
+        Ok(true)
     }
 }

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{
     Json, Router,
     extract::{Path, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::IntoResponse,
     routing::{get, post},
 };
@@ -12,7 +12,9 @@ use tracing::error;
 use crate::api::ConstraintsApi;
 use crate::metrics::server_http_metrics;
 use crate::routes;
-use crate::types::{SignedConstraints, SignedDelegation, SubmitBlockRequestWithProofs};
+use crate::types::{
+    AuthorizationContext, SignedConstraints, SignedDelegation, SubmitBlockRequestWithProofs,
+};
 
 /// Build an Axum router for the Constraints REST API,
 /// using any implementation of `ConstraintsApi`.
@@ -131,7 +133,11 @@ where
 }
 
 // GET /constraints/{slot}
-async fn get_constraints<A>(State(api): State<Arc<A>>, Path(slot): Path<u64>) -> impl IntoResponse
+async fn get_constraints<A>(
+    State(api): State<Arc<A>>,
+    Path(slot): Path<u64>,
+    headers: HeaderMap,
+) -> impl IntoResponse
 where
     A: ConstraintsApi,
 {
@@ -141,24 +147,34 @@ where
     let metrics = server_http_metrics();
     let start = metrics.start(ENDPOINT, METHOD);
 
-    match api.get_constraints(slot).await {
-        Ok(constraints) => {
-            metrics.finish_status(ENDPOINT, METHOD, StatusCode::OK.as_u16(), start);
-            (StatusCode::OK, Json(constraints)).into_response()
-        }
+    match AuthorizationContext::from_headers(&headers) {
+        Ok(auth) => match api.get_constraints(slot, auth).await {
+            Ok(constraints) => {
+                metrics.finish_status(ENDPOINT, METHOD, StatusCode::OK.as_u16(), start);
+                (StatusCode::OK, Json(constraints)).into_response()
+            }
+            Err(e) => {
+                error!("get_constraints error (slot={slot}): {e:?}");
+                metrics.finish_status(
+                    ENDPOINT,
+                    METHOD,
+                    StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                    start,
+                );
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("failed to get constraints for slot {slot}: {e}"),
+                )
+                    .into_response()
+            }
+        },
         Err(e) => {
             error!("get_constraints error (slot={slot}): {e:?}");
-            metrics.finish_status(
-                ENDPOINT,
-                METHOD,
-                StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
-                start,
-            );
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
+            return (
+                StatusCode::BAD_REQUEST,
                 format!("failed to get constraints for slot {slot}: {e}"),
             )
-                .into_response()
+                .into_response();
         }
     }
 }

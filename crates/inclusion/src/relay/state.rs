@@ -2,6 +2,7 @@ use alloy::primitives::B256;
 use commit_boost::prelude::{Chain, StartCommitModuleConfig};
 
 use common::storage::DatabaseContext;
+use constraints::types::ConstraintCapabilities;
 use lookahead::{
     beacon_client::{BeaconApiClient, ReqwestClient},
     types::BeaconApiConfig,
@@ -24,6 +25,8 @@ pub struct RelayState {
     pub lookahead_update_interval: u64,
     /// Optional downstream relay URL for proxying unhandled requests
     pub downstream_relay_url: String,
+    /// Supported constraint types
+    pub constraint_capabilities: ConstraintCapabilities,
 }
 
 impl RelayState {
@@ -40,6 +43,9 @@ impl RelayState {
         let module_signing_id = B256::from_slice(config.extra.module_signing_id.as_bytes());
         let lookahead_update_interval = config.extra.lookahead_update_interval;
         let downstream_relay_url = config.extra.downstream_relay_url;
+        let constraint_capabilities = ConstraintCapabilities {
+            constraint_types: config.extra.constraint_capabilities,
+        };
         Self {
             db,
             beacon_client,
@@ -47,6 +53,7 @@ impl RelayState {
             module_signing_id,
             lookahead_update_interval,
             downstream_relay_url,
+            constraint_capabilities,
         }
     }
 }

@@ -2,6 +2,7 @@ use alloy::consensus::TxEnvelope;
 use alloy::primitives::{Address, B256, Bytes};
 use alloy::rlp::Decodable;
 use alloy::rpc::types::beacon::relay::SubmitBlockRequest as AlloySubmitBlockRequest;
+use axum::http::HeaderMap;
 use eyre::{Result, eyre};
 use serde::{Deserialize, Serialize};
 
@@ -126,6 +127,87 @@ impl SubmitBlockRequestWithProofs {
     }
 }
 
+pub struct AuthorizationContext {
+    pub signature: BlsSignature,
+    pub public_key: BlsPublicKey,
+    pub nonce: u64,
+    pub signing_id: B256,
+}
+
+/// Extract and parse BLS signature, public key, nonce, and signing_id from headers
+impl AuthorizationContext {
+    pub fn from_headers(headers: &HeaderMap) -> Result<AuthorizationContext> {
+        // Extract required headers
+        let signature_header = headers
+            .get("X-Receiver-Signature")
+            .ok_or(eyre!("Missing X-Receiver-Signature header"))?;
+
+        let public_key_header = headers
+            .get("X-Receiver-PublicKey")
+            .ok_or(eyre!("Missing X-Receiver-PublicKey header"))?;
+
+        let nonce_header = headers
+            .get("X-Receiver-Nonce")
+            .ok_or(eyre!("Missing X-Receiver-Nonce header"))?;
+
+        let signing_id_header = headers
+            .get("X-Receiver-SigningId")
+            .ok_or(eyre!("Missing X-Receiver-SigningId header"))?;
+
+        // Parse BLS public key
+        let public_key_str = public_key_header
+            .to_str()
+            .map_err(|_| eyre!("Invalid X-Receiver-PublicKey header"))?;
+
+        let public_key = BlsPublicKey::deserialize(
+            public_key_str
+                .strip_prefix("0x")
+                .unwrap_or(public_key_str)
+                .as_bytes(),
+        )
+        .map_err(|e| eyre!("Invalid BLS public key: {:?}", e))?;
+
+        // Parse BLS signature
+        let signature_str = signature_header
+            .to_str()
+            .map_err(|_| {
+                eyre!("Invalid X-Receiver-Signature header");
+            })
+            .map_err(|_| eyre!("Invalid X-Receiver-Signature header"))?;
+
+        let bls_signature = BlsSignature::deserialize(
+            signature_str
+                .strip_prefix("0x")
+                .unwrap_or(signature_str)
+                .as_bytes(),
+        )
+        .map_err(|e| eyre!("Invalid BLS signature: {:?}", e))?;
+
+        // Parse nonce
+        let nonce = nonce_header
+            .to_str()?
+            .parse::<u64>()
+            .map_err(|e| eyre!("Invalid nonce format: {}", e))?;
+
+        // Parse signing_id
+        let signing_id_str = signing_id_header
+            .to_str()
+            .map_err(|e| eyre!("Invalid X-Receiver-SigningId header: {:?}", e))?;
+        let signing_id = B256::from_slice(
+            signing_id_str
+                .strip_prefix("0x")
+                .unwrap_or(signing_id_str)
+                .as_bytes(),
+        );
+
+        Ok(AuthorizationContext {
+            signature: bls_signature,
+            public_key,
+            nonce,
+            signing_id,
+        })
+    }
+}
 /// Response wrapper for GET /delegations
 #[derive(Serialize, Deserialize)]
 pub struct DelegationsResponse {

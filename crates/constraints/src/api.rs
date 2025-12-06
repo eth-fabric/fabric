@@ -1,6 +1,6 @@
 use crate::types::{
-    ConstraintCapabilities, ConstraintsResponse, DelegationsResponse, SignedConstraints,
-    SignedDelegation, SubmitBlockRequestWithProofs,
+    AuthorizationContext, ConstraintCapabilities, ConstraintsResponse, DelegationsResponse,
+    SignedConstraints, SignedDelegation, SubmitBlockRequestWithProofs,
 };
 use async_trait::async_trait;
 use eyre::Result;
@@ -18,7 +18,11 @@ pub trait ConstraintsApi: Send + Sync + Clone + 'static {
     async fn post_constraints(&self, signed_constraints: SignedConstraints) -> Result<()>;
 
     /// GET /constraints
-    async fn get_constraints(&self, slot: u64) -> Result<ConstraintsResponse>;
+    async fn get_constraints(
+        &self,
+        slot: u64,
+        auth: AuthorizationContext,
+    ) -> Result<ConstraintsResponse>;
 
     /// POST /delegation
     async fn post_delegation(&self, signed_delegation: SignedDelegation) -> Result<()>;
