@@ -5,7 +5,7 @@ use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 
 use crate::constants::DELEGATED_SLOTS_QUERY_RANGE;
-use crate::gateway::state::GatewayState;
+use crate::gateway::services::state::GatewayState;
 use crate::storage::DelegationsDbExt;
 use constraints::client::ConstraintsClient;
 use lookahead::utils::current_slot;

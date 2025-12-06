@@ -6,7 +6,7 @@ use tokio::time::sleep;
 use tracing::{error, info, warn};
 
 use crate::constants::CONSTRAINT_TRIGGER_OFFSET;
-use crate::gateway::state::GatewayState;
+use crate::gateway::services::state::GatewayState;
 use crate::gateway::utils::sign_constraints_message;
 use crate::storage::{DelegationsDbExt, InclusionDbExt};
 use constraints::client::ConstraintsClient;
