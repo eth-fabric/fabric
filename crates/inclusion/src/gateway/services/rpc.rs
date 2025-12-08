@@ -1,6 +1,8 @@
 use alloy::primitives::B256;
 use async_trait::async_trait;
+use commitments::server::CommitmentsServerInfo;
 use jsonrpsee::core::RpcResult;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use tracing::debug;
 
@@ -11,7 +13,7 @@ use commitments::types::{
 use lookahead::utils::current_slot;
 
 use crate::constants::{INCLUSION_COMMITMENT_TYPE, LOOKAHEAD_WINDOW_SIZE};
-use crate::gateway::services::state::GatewayState;
+use crate::gateway::state::GatewayState;
 use crate::gateway::utils;
 use crate::storage::{DelegationsDbExt, InclusionDbExt};
 
@@ -21,8 +23,17 @@ pub struct GatewayRpc {
 }
 
 impl GatewayRpc {
-    pub async fn new(state: Arc<GatewayState>) -> Self {
+    pub fn new(state: Arc<GatewayState>) -> Self {
         Self { state }
+    }
+}
+
+impl CommitmentsServerInfo for GatewayRpc {
+    fn server_addr(&self) -> SocketAddr {
+        self.state.rpc_addr
+    }
+    fn metrics_addr(&self) -> SocketAddr {
+        self.state.metrics_addr
     }
 }
 

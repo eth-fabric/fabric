@@ -5,7 +5,7 @@ use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 
 use crate::constants::LOOKAHEAD_WINDOW_SIZE;
-use crate::gateway::services::state::GatewayState;
+use crate::gateway::state::GatewayState;
 use crate::storage::DelegationsDbExt;
 use constraints::client::ConstraintsClient;
 use lookahead::utils::current_slot;
@@ -17,7 +17,7 @@ pub struct DelegationManager {
 
 impl DelegationManager {
     /// Create a new delegation task
-    pub async fn new(state: Arc<GatewayState>) -> Self {
+    pub fn new(state: Arc<GatewayState>) -> Self {
         Self { state }
     }
 

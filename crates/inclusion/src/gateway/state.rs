@@ -1,3 +1,5 @@
+use std::net::{IpAddr, SocketAddr};
+
 use alloy::{
     network::Ethereum,
     primitives::B256,
@@ -15,6 +17,10 @@ use crate::gateway::config::GatewayConfig;
 /// Server state that provides access to shared resources for gateway operations
 #[derive(Clone)]
 pub struct GatewayState {
+    /// Address of the Commitments RPC server
+    pub rpc_addr: SocketAddr,
+    /// Path to the rocksdb database file location
+    pub metrics_addr: SocketAddr,
     /// Storage
     pub db: DatabaseContext,
     /// Signer client for calling the signer API
@@ -39,9 +45,24 @@ impl GatewayState {
     pub fn new(db: DatabaseContext, config: StartCommitModuleConfig<GatewayConfig>) -> Self {
         // Create constraints client
         let constraints_client = HttpConstraintsClient::new(
-            config.extra.relay_addr.to_string(),
+            config
+                .extra
+                .relay_host
+                .parse::<IpAddr>()
+                .expect("Failed to parse relay host"),
+            config.extra.relay_port,
             config.extra.relay_api_key.clone(),
         );
+        let rpc_addr = constraints_client
+            .base_url
+            .parse::<SocketAddr>()
+            .expect("Failed to parse RPC address");
+        let metrics_addr = format!(
+            "{}:{}",
+            config.extra.metrics_host, config.extra.metrics_port
+        )
+        .parse::<SocketAddr>()
+        .expect("Failed to parse metrics address");
 
         // Create execution client
         let execution_client_url = Url::parse(config.extra.execution_client.as_str())
@@ -90,6 +111,8 @@ impl GatewayState {
             chain,
             module_signing_id,
             delegation_check_interval_seconds,
+            rpc_addr,
+            metrics_addr,
         }
     }
 }

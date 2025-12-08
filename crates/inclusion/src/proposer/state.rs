@@ -1,3 +1,5 @@
+use std::net::IpAddr;
+
 use alloy::primitives::{Address, B256};
 use alloy::rpc::types::beacon::BlsPublicKey;
 use commit_boost::prelude::{Chain, StartCommitModuleConfig, commit::client::SignerClient};
@@ -38,7 +40,12 @@ impl ProposerState {
     pub fn new(db: DatabaseContext, config: StartCommitModuleConfig<ProposerConfig>) -> Self {
         // Create constraints client
         let constraints_client = HttpConstraintsClient::new(
-            config.extra.relay_addr.to_string(),
+            config
+                .extra
+                .relay_host
+                .parse::<IpAddr>()
+                .expect("Failed to parse relay host"),
+            config.extra.relay_port,
             config.extra.relay_api_key.clone(),
         );
 

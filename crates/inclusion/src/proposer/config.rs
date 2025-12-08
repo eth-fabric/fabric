@@ -13,7 +13,12 @@ pub struct ProposerConfig {
     pub gateway_address: String,
 
     /// Address of the Relay server (constraints API)
-    pub relay_addr: String,
+    pub relay_host: String,
+
+    /// Port of the Relay server (constraints API)
+    pub relay_port: u16,
+
+    /// API key for the Relay server (constraints API)
     pub relay_api_key: Option<String>,
 
     /// Beacon API URL for fetching proposer duties

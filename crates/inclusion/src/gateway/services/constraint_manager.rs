@@ -6,7 +6,7 @@ use tokio::time::sleep;
 use tracing::{error, info, warn};
 
 use crate::constants::CONSTRAINT_TRIGGER_OFFSET;
-use crate::gateway::services::state::GatewayState;
+use crate::gateway::state::GatewayState;
 use crate::gateway::utils::sign_constraints_message;
 use crate::storage::{DelegationsDbExt, InclusionDbExt};
 use constraints::client::ConstraintsClient;
@@ -19,7 +19,7 @@ pub struct ConstraintManager {
 
 impl ConstraintManager {
     /// Create a new constraint manager
-    pub async fn new(state: Arc<GatewayState>) -> Self {
+    pub fn new(state: Arc<GatewayState>) -> Self {
         Self { state }
     }
 

@@ -4,13 +4,27 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GatewayConfig {
     /// Address of the Commitments RPC server
-    pub rpc_addr: String,
+    pub rpc_host: String,
+
+    /// Port of the Commitments RPC server
+    pub rpc_port: u16,
+
+    /// Host of the metrics server
+    pub metrics_host: String,
+
+    /// Port of the metrics server
+    pub metrics_port: u16,
 
     /// Path to the rocksdb database file location
     pub db_path: String,
 
-    /// Address of the Relay server (constraints API)
-    pub relay_addr: String,
+    /// Host of the Relay server (constraints API)
+    pub relay_host: String,
+
+    /// Port of the Relay server (constraints API)
+    pub relay_port: u16,
+
+    /// API key for the Relay server (constraints API)
     pub relay_api_key: Option<String>,
 
     /// Execution client configuration

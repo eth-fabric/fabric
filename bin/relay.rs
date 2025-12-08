@@ -51,7 +51,7 @@ async fn main() -> eyre::Result<()> {
     let router = build_constraints_router_with_proxy(relay_server);
 
     info!("Starting lookahead manager");
-    tokio::spawn(async move {
+    let lookahead_manager_handle = tokio::spawn(async move {
         if let Err(e) = lookahead_manager.run().await {
             tracing::error!("Lookahead manager error: {}", e);
         }
@@ -60,6 +60,19 @@ async fn main() -> eyre::Result<()> {
     // Run relay server (this will block until shutdown)
     info!("Starting relay server on {}", server_url);
     let listener = TcpListener::bind(server_url).await?;
-    axum::serve(listener, router).await?;
+    let relay_server_handle = tokio::spawn(async move {
+        if let Err(e) = axum::serve(listener, router).await {
+            tracing::error!("Relay server error: {}", e);
+        }
+    });
+
+    // Wait for shutdown signals
+    common::utils::wait_for_signal().await?;
+    info!("Shutdown signal received, stopping tasks");
+
+    // Kill tasks
+    lookahead_manager_handle.abort();
+    relay_server_handle.abort();
+
     Ok(())
 }

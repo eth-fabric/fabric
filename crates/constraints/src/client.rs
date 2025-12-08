@@ -1,5 +1,6 @@
 // client.rs
 
+use std::net::IpAddr;
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -49,18 +50,20 @@ pub trait ConstraintsClient: Send + Sync {
 /// HTTP implementation of the Constraints client.
 #[derive(Clone)]
 pub struct HttpConstraintsClient {
-    client: Client,
-    base_url: String,
-    api_key: Option<String>,
+    pub client: Client,
+    pub base_url: String,
+    pub api_key: Option<String>,
 }
 
 impl HttpConstraintsClient {
     /// Create a new constraints client.
-    pub fn new(base_url: String, api_key: Option<String>) -> Self {
+    pub fn new(host: IpAddr, port: u16, api_key: Option<String>) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(30))
             .build()
             .expect("Failed to create HTTP client");
+
+        let base_url = format!("http://{host}:{port}");
 
         Self {
             client,

@@ -33,7 +33,10 @@ async fn setup_state() -> Result<ProposerState> {
         "  Gateway committer address (ECDSA): {}",
         state.gateway_address
     );
-    info!("  Constraints URL: {}", config.relay_addr);
+    info!(
+        "  Constraints URL: {}/{}",
+        config.relay_host, config.relay_port
+    );
     info!("  Beacon API URL: {}", config.beacon_api_url);
     info!("  Module signing ID: {}", config.module_signing_id);
     info!("  Chain: {}", state.chain);
