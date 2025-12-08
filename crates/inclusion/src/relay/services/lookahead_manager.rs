@@ -17,7 +17,7 @@ pub struct LookaheadManager {
 
 impl LookaheadManager {
     /// Create a new lookahead manager
-    pub async fn new(state: Arc<RelayState>) -> Self {
+    pub fn new(state: Arc<RelayState>) -> Self {
         Self { state }
     }
 

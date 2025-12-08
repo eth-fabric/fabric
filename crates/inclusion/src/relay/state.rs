@@ -1,8 +1,10 @@
 use alloy::primitives::B256;
-use commit_boost::prelude::{Chain, StartCommitModuleConfig};
+use commit_boost::prelude::Chain;
+use reqwest::Client;
+use std::net::IpAddr;
 
 use common::storage::DatabaseContext;
-use constraints::types::ConstraintCapabilities;
+use constraints::{proxy::ProxyState, types::ConstraintCapabilities};
 use lookahead::{
     beacon_client::{BeaconApiClient, ReqwestClient},
     types::BeaconApiConfig,
@@ -13,6 +15,10 @@ use crate::relay::{config::RelayConfig, services::proxy::LegacyRelayClient};
 /// Server state that provides access to shared resources for gateway operations
 #[derive(Clone)]
 pub struct RelayState {
+    /// Host of constraints server
+    pub host: IpAddr,
+    /// Port of constraints server
+    pub port: u16,
     /// Storage
     pub db: DatabaseContext,
     /// Beacon client for fetching proposer duties
@@ -29,31 +35,53 @@ pub struct RelayState {
     pub constraint_capabilities: ConstraintCapabilities,
 }
 
+impl ProxyState for RelayState {
+    fn server_url(&self) -> &str {
+        &self.downstream_relay_client.base_url
+    }
+
+    fn http_client(&self) -> &Client {
+        &self.downstream_relay_client.client
+    }
+}
+
 impl RelayState {
-    pub fn new(db: DatabaseContext, config: StartCommitModuleConfig<RelayConfig>) -> Self {
+    pub fn new(db: DatabaseContext, config: RelayConfig) -> Self {
+        let chain = match config.chain.to_string().to_lowercase().as_str() {
+            "mainnet" => Chain::Mainnet,
+            "sepolia" => Chain::Sepolia,
+            "hoodi" => Chain::Hoodi,
+            "holesky" => Chain::Holesky,
+            _ => panic!("Invalid chain name: {}", config.chain),
+        };
+
+        let host = config.host.parse::<IpAddr>().expect("Failed to parse host");
+        let port = config.port;
+
         // Create beacon client
         let beacon_client = BeaconApiClient::with_default_client(BeaconApiConfig {
-            primary_endpoint: config.extra.beacon_api_url.to_string(),
+            primary_endpoint: config.beacon_api_url.to_string(),
             fallback_endpoints: vec![],
             request_timeout_secs: 30,
-            genesis_time: config.chain.genesis_time_sec(),
+            genesis_time: chain.genesis_time_sec(),
         })
         .expect("Failed to create beacon client");
 
         // Create downstream relay client
         let downstream_relay_client =
-            LegacyRelayClient::new(config.extra.downstream_relay_url.to_string())
+            LegacyRelayClient::new(config.downstream_relay_url.to_string())
                 .expect("Failed to create downstream relay client");
 
         // Create client to call downstream relay
-        let chain = config.chain;
-        let module_signing_id = B256::from_slice(config.extra.module_signing_id.as_bytes());
-        let lookahead_update_interval = config.extra.lookahead_update_interval;
+        let module_signing_id = B256::from_slice(config.module_signing_id.as_bytes());
+        let lookahead_update_interval = config.lookahead_update_interval;
         let constraint_capabilities = ConstraintCapabilities {
-            constraint_types: config.extra.constraint_capabilities,
+            constraint_types: config.constraint_capabilities,
         };
         Self {
             db,
+            host,
+            port,
             beacon_client,
             chain,
             module_signing_id,

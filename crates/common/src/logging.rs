@@ -7,7 +7,7 @@ use tracing_subscriber::EnvFilter;
 ///
 /// This configures an EnvFilter using either RUST_LOG or the provided level,
 /// enables thread IDs and names, and disables target names for cleaner output.
-pub fn setup(log_level: &str) -> Result<()> {
+pub fn setup_logging(log_level: &str) -> Result<()> {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(log_level));
 
     tracing_subscriber::fmt()

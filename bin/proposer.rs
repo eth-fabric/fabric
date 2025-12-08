@@ -20,7 +20,7 @@ async fn setup_state() -> Result<ProposerState> {
 
     let config = commit_config.extra.clone();
 
-    // Initialize databases
+    // Initialize database
     let db = create_database(config.db_path.as_str())
         .map_err(|e| eyre::eyre!("Failed to create database: {}", e))?;
 

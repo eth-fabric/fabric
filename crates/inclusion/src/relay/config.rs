@@ -2,8 +2,11 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RelayConfig {
-    /// Address of the Relay server (constraints API)
-    pub relay_addr: String,
+    /// Host of the Relay server (constraints API)
+    pub host: String,
+
+    /// Port of the Relay server (constraints API)
+    pub port: u16,
 
     /// Path to the rocksdb database file location
     pub db_path: String,
@@ -20,6 +23,12 @@ pub struct RelayConfig {
     /// How often to update the lookahead window
     pub lookahead_update_interval: u64,
 
-    /// Optional downstream relay URL for proxying unhandled requests
+    /// Downstream relay URL for proxying unhandled requests
     pub downstream_relay_url: String,
+
+    /// Chain name
+    pub chain: String,
+
+    /// Log level
+    pub log_level: String,
 }

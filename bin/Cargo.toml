@@ -7,9 +7,9 @@ edition = "2024"
 # name = "gateway"
 # path = "gateway.rs"
 
-# [[bin]]
-# name = "relay"
-# path = "relay.rs"
+[[bin]]
+name = "relay"
+path = "relay.rs"
 
 [[bin]]
 name = "proposer"

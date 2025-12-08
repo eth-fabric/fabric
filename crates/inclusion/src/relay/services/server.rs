@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use axum::http::HeaderMap;
 use constraints::{
     api::ConstraintsApi,
+    proxy::ProxyState,
     types::{
         AuthorizationContext, ConstraintCapabilities, ConstraintsResponse, DelegationsResponse,
         SignedConstraints, SignedDelegation, SubmitBlockRequestWithProofs,
@@ -12,6 +13,7 @@ use constraints::{
 };
 use eyre::{Result, eyre};
 use lookahead::utils::current_slot;
+use reqwest::Client;
 use signing::signer::verify_bls;
 use tracing::info;
 
@@ -33,6 +35,22 @@ pub struct RelayServer {
 impl RelayServer {
     pub fn new(state: Arc<RelayState>) -> Self {
         Self { state }
+    }
+}
+
+impl AsRef<RelayState> for RelayServer {
+    fn as_ref(&self) -> &RelayState {
+        &self.state
+    }
+}
+
+impl ProxyState for RelayServer {
+    fn server_url(&self) -> &str {
+        &self.state.downstream_relay_client.base_url
+    }
+
+    fn http_client(&self) -> &Client {
+        &self.state.downstream_relay_client.client
     }
 }
 

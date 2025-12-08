@@ -11,6 +11,7 @@ use tracing::error;
 
 use crate::api::ConstraintsApi;
 use crate::metrics::server_http_metrics;
+use crate::proxy::{ProxyState, proxy_handler};
 use crate::routes;
 use crate::types::{
     AuthorizationContext, SignedConstraints, SignedDelegation, SubmitBlockRequestWithProofs,
@@ -35,6 +36,29 @@ where
             routes::BLOCKS_WITH_PROOFS,
             post(post_blocks_with_proofs::<A>),
         )
+        .with_state(state)
+}
+
+/// Build an Axum router for the Constraints REST API with a proxy fallback,
+/// using any implementation of `ConstraintsApi` and `ProxyState`.
+pub fn build_constraints_router_with_proxy<A>(api: A) -> Router
+where
+    A: ConstraintsApi + ProxyState,
+{
+    let state = Arc::new(api);
+
+    Router::new()
+        .route(routes::HEALTH, get(health::<A>))
+        .route(routes::CAPABILITIES, get(get_capabilities::<A>))
+        .route(routes::CONSTRAINTS, post(post_constraints::<A>))
+        .route(routes::CONSTRAINTS_SLOT, get(get_constraints::<A>))
+        .route(routes::DELEGATION, post(post_delegation::<A>))
+        .route(routes::DELEGATIONS_SLOT, get(get_delegations::<A>))
+        .route(
+            routes::BLOCKS_WITH_PROOFS,
+            post(post_blocks_with_proofs::<A>),
+        )
+        .fallback(proxy_handler::<A>)
         .with_state(state)
 }
 

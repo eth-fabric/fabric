@@ -59,7 +59,7 @@ async fn get_proposer_duties_handler(
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    common::logging::setup("info".into())?;
+    common::logging::setup_logging("info".into())?;
     // Parse command line arguments
     let args = Args::parse();
 
