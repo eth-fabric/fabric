@@ -15,7 +15,7 @@ pub struct DelegationManager {
 
 impl DelegationManager {
     /// Create a new delegation manager
-    pub async fn new(state: Arc<ProposerState>) -> Self {
+    pub fn new(state: Arc<ProposerState>) -> Self {
         Self { state }
     }
 

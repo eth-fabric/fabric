@@ -7,7 +7,7 @@ use std::sync::Arc;
 pub use db::DatabaseContext;
 
 /// Create a RocksDB database at the specified path
-pub fn create_database(database_path: &str) -> Result<Arc<DatabaseContext>> {
+pub fn create_database(database_path: &str) -> Result<DatabaseContext> {
     // Create database directory if it doesn't exist
     std::fs::create_dir_all(database_path)
         .with_context(|| format!("Failed to create database directory: {}", database_path))?;
@@ -28,5 +28,5 @@ pub fn create_database(database_path: &str) -> Result<Arc<DatabaseContext>> {
 
     tracing::info!("RocksDB database healthcheck passed");
 
-    Ok(Arc::new(db_context))
+    Ok(db_context)
 }
