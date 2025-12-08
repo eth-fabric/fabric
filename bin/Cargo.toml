@@ -15,9 +15,9 @@ edition = "2024"
 # name = "proposer"
 # path = "proposer.rs"
 
-# [[bin]]
-# name = "spammer"
-# path = "spammer.rs"
+[[bin]]
+name = "spammer"
+path = "spammer.rs"
 
 # [[bin]]
 # name = "simulation-setup"
@@ -36,6 +36,8 @@ commitments = { package = "fabric-commitments", path = "../crates/commitments" }
 constraints = { package = "fabric-constraints", path = "../crates/constraints" }
 common = { package = "fabric-common", path = "../crates/common" }
 lookahead = { package = "fabric-lookahead", path = "../crates/lookahead" }
+inclusion = { package = "fabric-inclusion", path = "../crates/inclusion" }
+urc = { package = "fabric-urc", path = "../crates/urc" }
 
 commit-boost = { workspace = true }
 cb-common = { workspace = true }
@@ -48,6 +50,8 @@ eyre = { workspace = true }
 tracing = { workspace = true }
 tokio = { workspace = true }
 rand = { workspace = true }
+serde = { workspace = true }
+toml = { workspace = true }
 url = "2.5"
 
 # gateway = { package = "fabric-gateway", path = "../crates/gateway" }
