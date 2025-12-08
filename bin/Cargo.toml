@@ -27,17 +27,29 @@ edition = "2024"
 # name = "local-signer-module"
 # path = "local_signer_module.rs"
 
-# [[bin]]
-# name = "beacon-mock"
-# path = "beacon_mock.rs"
+[[bin]]
+name = "beacon-mock"
+path = "beacon_mock.rs"
 
-# [dependencies]
-# common = { package = "fabric-common", path = "../crates/common" }
-# commitments = { package = "fabric-commitments", path = "../crates/commitments" }
-# constraints = { package = "fabric-constraints", path = "../crates/constraints" }
+[dependencies]
+commitments = { package = "fabric-commitments", path = "../crates/commitments" }
+constraints = { package = "fabric-constraints", path = "../crates/constraints" }
+common = { package = "fabric-common", path = "../crates/common" }
+lookahead = { package = "fabric-lookahead", path = "../crates/lookahead" }
+
+alloy = { workspace = true }
+axum = { workspace = true }
+clap = { workspace = true }
+eyre = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+rand = { workspace = true }
+url = "2.5"
+
 # gateway = { package = "fabric-gateway", path = "../crates/gateway" }
 # relay = { package = "fabric-relay", path = "../crates/relay" }
 # proposer = { package = "fabric-proposer", path = "../crates/proposer" }
+# axum = { workspace = true }
 # cb-common = { workspace = true }
 # cb-signer = { workspace = true }
 # clap = { workspace = true }
@@ -60,7 +72,6 @@ edition = "2024"
 # eth-keystore = "0.5"
 # prometheus = { workspace = true }
 # lazy_static = { workspace = true }
-# axum = { workspace = true }
 # url = "2.5"
 
 # todo eventually remove

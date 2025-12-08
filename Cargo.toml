@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    # "bin",
+    "bin",
     "crates/common",
     "crates/commitments",
     "crates/constraints",
@@ -38,20 +38,17 @@ alloy = { version = "^1.0.35", features = [
     "consensus",
     "rlp"
 ] }
-# clap = { version = "4.5", features = ["derive"] }
-# color-eyre = "0.6"
+clap = { version = "4.5", features = ["derive"] }
 hex = "0.4"
 axum = { version = "0.8", features = ["macros", "multipart"] }
 reqwest = { version = "0.12.4", features = ["json", "rustls-tls"] }
 async-trait = "0.1.89"
-# chrono = { version = "0.4", features = ["serde"] }
 tempfile = "3.8"
 prometheus = "0.14.0"
 lazy_static = "1.5.0"
-# indexmap = "2.2.6"
 blst = "0.3"
 tokio-test = "0.4"
-# rand = "0.8"
+rand = "0.8"
 mockall = "0.13"
 
 # for merkle proofs

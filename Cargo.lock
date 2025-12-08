@@ -2983,6 +2983,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "fabric-binaries"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "axum 0.8.7",
+ "clap",
+ "eyre",
+ "fabric-commitments",
+ "fabric-common",
+ "fabric-constraints",
+ "fabric-lookahead",
+ "rand 0.8.5",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "fabric-commitments"
 version = "0.1.0"
 dependencies = [
