@@ -2988,7 +2988,10 @@ version = "0.1.0"
 dependencies = [
  "alloy",
  "axum 0.8.7",
+ "cb-common",
+ "cb-signer",
  "clap",
+ "commit-boost",
  "eyre",
  "fabric-commitments",
  "fabric-common",

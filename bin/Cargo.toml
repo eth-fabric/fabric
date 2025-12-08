@@ -23,9 +23,9 @@ edition = "2024"
 # name = "simulation-setup"
 # path = "simulation-setup.rs"
 
-# [[bin]]
-# name = "local-signer-module"
-# path = "local_signer_module.rs"
+[[bin]]
+name = "local-signer-module"
+path = "local_signer_module.rs"
 
 [[bin]]
 name = "beacon-mock"
@@ -36,6 +36,10 @@ commitments = { package = "fabric-commitments", path = "../crates/commitments" }
 constraints = { package = "fabric-constraints", path = "../crates/constraints" }
 common = { package = "fabric-common", path = "../crates/common" }
 lookahead = { package = "fabric-lookahead", path = "../crates/lookahead" }
+
+commit-boost = { workspace = true }
+cb-common = { workspace = true }
+cb-signer = { workspace = true }
 
 alloy = { workspace = true }
 axum = { workspace = true }
