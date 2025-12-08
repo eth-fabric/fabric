@@ -251,6 +251,7 @@ where
 // POST /blocks_with_proofs
 async fn post_blocks_with_proofs<A>(
     State(api): State<Arc<A>>,
+    headers: HeaderMap,
     Json(body): Json<SubmitBlockRequestWithProofs>,
 ) -> impl IntoResponse
 where
@@ -262,7 +263,7 @@ where
     let metrics = server_http_metrics();
     let start = metrics.start(ENDPOINT, METHOD);
 
-    match api.post_blocks_with_proofs(body).await {
+    match api.post_blocks_with_proofs(body, headers).await {
         Ok(()) => {
             metrics.finish_status(ENDPOINT, METHOD, StatusCode::OK.as_u16(), start);
             StatusCode::OK.into_response()

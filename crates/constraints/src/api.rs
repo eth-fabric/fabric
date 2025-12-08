@@ -3,6 +3,7 @@ use crate::types::{
     SignedConstraints, SignedDelegation, SubmitBlockRequestWithProofs,
 };
 use async_trait::async_trait;
+use axum::http::HeaderMap;
 use eyre::Result;
 
 /// Server side spec for the Constraints REST API.
@@ -33,7 +34,8 @@ pub trait ConstraintsApi: Send + Sync + Clone + 'static {
     /// POST /blocks_with_proofs
     async fn post_blocks_with_proofs(
         &self,
-        blocks_with_proofs: SubmitBlockRequestWithProofs,
+        block_request: SubmitBlockRequestWithProofs,
+        headers: HeaderMap,
     ) -> Result<()>;
 
     /// GET /health

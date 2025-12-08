@@ -11,6 +11,8 @@ constraints = { package = "fabric-constraints", path = "../constraints" }
 lookahead = { package = "fabric-lookahead", path = "../lookahead" }
 signing = { package = "fabric-signing", path = "../signing" }
 urc = { package = "fabric-urc", path = "../urc" }
+axum = { workspace = true }
+reqwest = { workspace = true }
 eyre = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

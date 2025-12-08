@@ -3041,6 +3041,7 @@ version = "0.1.0"
 dependencies = [
  "alloy",
  "async-trait",
+ "axum 0.8.7",
  "bincode",
  "cb-common",
  "commit-boost",
@@ -3056,6 +3057,7 @@ dependencies = [
  "jsonrpsee",
  "lazy_static",
  "prometheus",
+ "reqwest",
  "rocksdb",
  "serde",
  "serde_json",

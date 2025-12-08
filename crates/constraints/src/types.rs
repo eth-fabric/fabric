@@ -170,9 +170,6 @@ impl AuthorizationContext {
         // Parse BLS signature
         let signature_str = signature_header
             .to_str()
-            .map_err(|_| {
-                eyre!("Invalid X-Receiver-Signature header");
-            })
             .map_err(|_| eyre!("Invalid X-Receiver-Signature header"))?;
 
         let bls_signature = BlsSignature::deserialize(
