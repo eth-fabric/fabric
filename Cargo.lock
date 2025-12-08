@@ -3022,7 +3022,6 @@ dependencies = [
  "async-trait",
  "axum 0.8.7",
  "cb-common",
- "commit-boost",
  "eyre",
  "fabric-common",
  "lazy_static",

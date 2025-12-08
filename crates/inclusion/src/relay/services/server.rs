@@ -98,16 +98,14 @@ impl ConstraintsApi for RelayServer {
 
         info!("verifying slot signature");
         // Verify caller's signature against the slot hash using standardized commit-boost verification
-        if !verify_bls(
+        verify_bls(
             self.state.chain,
             &auth.public_key,
             &slot_hash,
             &auth.signature,
             &auth.signing_id,
             auth.nonce,
-        ) {
-            return Err(eyre!("Invalid authorization signature for slot {}", slot));
-        }
+        )?;
 
         // Get signed constraints from database
         let signed_constraints = self

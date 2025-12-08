@@ -1,8 +1,9 @@
 use alloy::primitives::{Address, B256, Bytes};
+use alloy::rpc::types::beacon::{BlsPublicKey, BlsSignature};
 use eyre::Result;
 use signing::signer;
 
-use commit_boost::prelude::{BlsPublicKey, Chain, commit::client::SignerClient};
+use commit_boost::prelude::{Chain, commit::client::SignerClient};
 use constraints::types::{Delegation, SignedDelegation};
 use urc::utils::get_delegation_signing_root;
 
@@ -40,6 +41,6 @@ pub async fn create_signed_delegation(
         message: delegation.clone(),
         nonce: response.nonce,
         signing_id: response.module_signing_id,
-        signature: response.signature,
+        signature: BlsSignature::new(response.signature.serialize()),
     })
 }

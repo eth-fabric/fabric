@@ -2,11 +2,10 @@ use alloy::consensus::TxEnvelope;
 use alloy::primitives::{Address, B256, Bytes};
 use alloy::rlp::Decodable;
 use alloy::rpc::types::beacon::relay::SubmitBlockRequest as AlloySubmitBlockRequest;
+use alloy::rpc::types::beacon::{BlsPublicKey, BlsSignature};
 use axum::http::HeaderMap;
 use eyre::{Result, eyre};
 use serde::{Deserialize, Serialize};
-
-use commit_boost::prelude::{BlsPublicKey, BlsSignature};
 
 /// A constraint with its type and payload
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -159,26 +158,28 @@ impl AuthorizationContext {
             .to_str()
             .map_err(|_| eyre!("Invalid X-Receiver-PublicKey header"))?;
 
-        let public_key = BlsPublicKey::deserialize(
+        let public_key = BlsPublicKey::new(
             public_key_str
                 .strip_prefix("0x")
                 .unwrap_or(public_key_str)
-                .as_bytes(),
-        )
-        .map_err(|e| eyre!("Invalid BLS public key: {:?}", e))?;
+                .as_bytes()
+                .try_into()
+                .map_err(|e| eyre!("Invalid BLS public key: {:?}", e))?,
+        );
 
         // Parse BLS signature
         let signature_str = signature_header
             .to_str()
             .map_err(|_| eyre!("Invalid X-Receiver-Signature header"))?;
 
-        let bls_signature = BlsSignature::deserialize(
+        let bls_signature = BlsSignature::new(
             signature_str
                 .strip_prefix("0x")
                 .unwrap_or(signature_str)
-                .as_bytes(),
-        )
-        .map_err(|e| eyre!("Invalid BLS signature: {:?}", e))?;
+                .as_bytes()
+                .try_into()
+                .map_err(|e| eyre!("Invalid BLS signature: {:?}", e))?,
+        );
 
         // Parse nonce
         let nonce = nonce_header

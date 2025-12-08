@@ -1,7 +1,6 @@
 use alloy::primitives::{Address, B256};
-use commit_boost::prelude::{
-    BlsPublicKey, Chain, StartCommitModuleConfig, commit::client::SignerClient,
-};
+use alloy::rpc::types::beacon::BlsPublicKey;
+use commit_boost::prelude::{Chain, StartCommitModuleConfig, commit::client::SignerClient};
 
 use common::storage::DatabaseContext;
 use constraints::client::HttpConstraintsClient;
@@ -54,11 +53,16 @@ impl ProposerState {
 
         let signer_client = config.signer_client.clone();
 
-        let gateway_public_key =
-            BlsPublicKey::deserialize(config.extra.gateway_public_key.as_bytes())
-                .expect("Failed to deserialize gateway public key from config");
+        let gateway_public_key = BlsPublicKey::new(
+            config
+                .extra
+                .gateway_public_key
+                .as_bytes()
+                .try_into()
+                .expect("Failed to convert gateway public key to bytes"),
+        );
         let gateway_address = Address::try_from(config.extra.gateway_address.as_bytes())
-            .expect("Failed to parse gateway address from config");
+            .expect("Failed to convert gateway address to address");
 
         let chain = config.chain;
         let module_signing_id = B256::from_slice(config.extra.module_signing_id.as_bytes());

@@ -9,7 +9,6 @@ eyre = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 alloy = { workspace = true }
-commit-boost = { workspace = true }
 lazy_static = { workspace = true }
 prometheus = { workspace = true }
 async-trait = { workspace = true }

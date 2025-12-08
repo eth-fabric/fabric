@@ -1,14 +1,12 @@
-use eyre::{Context, Result};
-use std::sync::Arc;
-use tracing::{debug, info, warn};
-
-use commit_boost::prelude::BlsPublicKey;
-
 use crate::proposer::state::ProposerState;
 use crate::proposer::utils::create_signed_delegation;
 use crate::storage::DelegationsDbExt;
+use alloy::rpc::types::beacon::BlsPublicKey;
 use constraints::client::ConstraintsClient;
+use eyre::{Context, Result};
 use lookahead::utils::{current_slot, slot_to_epoch};
+use std::sync::Arc;
+use tracing::{debug, info, warn};
 
 /// Delegation manager that monitors lookahead duties and signs delegations
 pub struct DelegationManager {
@@ -34,7 +32,7 @@ impl DelegationManager {
         Ok(response
             .keys
             .iter()
-            .map(|map| map.consensus.clone())
+            .map(|map| BlsPublicKey::new(map.consensus.serialize()))
             .collect())
     }
 

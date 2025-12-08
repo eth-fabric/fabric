@@ -1,6 +1,7 @@
 //! Minimal Beacon API client for retrieving proposer duties and slot information
 #![allow(async_fn_in_trait)]
 
+use alloy::rpc::types::beacon::BlsPublicKey;
 use eyre::{Context, Result};
 use reqwest::Client;
 use serde::Deserialize;
@@ -14,7 +15,6 @@ use crate::types::{
     ValidatorResponse,
 };
 use crate::utils::slot_to_epoch;
-use commit_boost::prelude::BlsPublicKey;
 
 /// HTTP response containing status code and body
 #[derive(Debug, Clone)]
@@ -235,8 +235,7 @@ impl<H: HttpClient> BeaconApiClient<H> {
         validator_pubkey: &BlsPublicKey,
     ) -> Result<ValidatorInfo> {
         // Format pubkey as hex string with 0x prefix
-        let pubkey_bytes = validator_pubkey.serialize();
-        let pubkey_hex = format!("0x{}", hex::encode(pubkey_bytes));
+        let pubkey_hex = format!("0x{}", hex::encode(validator_pubkey));
         let endpoint = format!("{}/{}", VALIDATOR_STATUS_ROUTE, pubkey_hex);
 
         // Try primary endpoint first, then fallbacks

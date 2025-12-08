@@ -1,5 +1,5 @@
 use alloy::primitives::B256;
-use commit_boost::prelude::BlsPublicKey;
+use alloy::rpc::types::beacon::BlsPublicKey;
 use commitments::types::SignedCommitment;
 use constraints::types::{Constraint, SignedConstraints, SignedDelegation};
 use eyre::Result;

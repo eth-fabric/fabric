@@ -2,11 +2,10 @@ use alloy::{
     network::Ethereum,
     primitives::B256,
     providers::{DynProvider, Provider, ProviderBuilder},
+    rpc::types::beacon::BlsPublicKey,
     transports::http::reqwest::Url,
 };
-use commit_boost::prelude::{
-    BlsPublicKey, Chain, StartCommitModuleConfig, commit::client::SignerClient,
-};
+use commit_boost::prelude::{Chain, StartCommitModuleConfig, commit::client::SignerClient};
 
 use common::storage::DatabaseContext;
 use constraints::client::HttpConstraintsClient;
@@ -55,17 +54,26 @@ impl GatewayState {
         // Parse config fields into their respective types
         let signer_client = config.signer_client.clone();
 
-        let gateway_public_key =
-            BlsPublicKey::deserialize(config.extra.gateway_public_key.as_bytes())
-                .expect("Failed to deserialize gateway public key from config");
+        let gateway_public_key = BlsPublicKey::new(
+            config
+                .extra
+                .gateway_public_key
+                .as_bytes()
+                .try_into()
+                .expect("Failed to convert gateway public key to bytes"),
+        );
 
         let constraints_receivers = config
             .extra
             .constraints_receivers
             .iter()
             .map(|receiver| {
-                BlsPublicKey::deserialize(receiver.as_bytes())
-                    .expect("Failed to deserialize constraints receiver from config")
+                BlsPublicKey::new(
+                    receiver
+                        .as_bytes()
+                        .try_into()
+                        .expect("Failed to convert constraints receiver to bytes"),
+                )
             })
             .collect::<Vec<_>>();
 

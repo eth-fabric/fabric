@@ -1,11 +1,12 @@
 use alloy::primitives::{B256, Bytes, keccak256};
+use alloy::rpc::types::beacon::{BlsPublicKey, BlsSignature};
 use alloy::sol;
 use alloy::sol_types::{SolCall, SolValue};
 use blst::{
     BLST_ERROR, blst_bendian_from_fp, blst_fp, blst_p1_affine, blst_p1_uncompress, blst_p2_affine,
     blst_p2_uncompress,
 };
-use commit_boost::prelude::{BlsPublicKey, BlsSignature};
+// use commit_boost::prelude::{BlsPublicKey, BlsSignature};
 use eyre::{Result, eyre};
 
 use crate::bindings::i_registry::{
@@ -20,9 +21,8 @@ use constraints::types::{ConstraintsMessage, Delegation};
 
 /// Converts a pubkey to its corresponding affine G1 point form for EVM precompile usage
 fn convert_pubkey_to_g1_point(pubkey: &BlsPublicKey) -> Result<G1Point> {
-    let pubkey_byes = pubkey.serialize();
     let mut pubkey_affine = blst_p1_affine::default();
-    let uncompress_result = unsafe { blst_p1_uncompress(&mut pubkey_affine, pubkey_byes.as_ptr()) };
+    let uncompress_result = unsafe { blst_p1_uncompress(&mut pubkey_affine, pubkey.as_ptr()) };
     match uncompress_result {
         BLST_ERROR::BLST_SUCCESS => Ok(()),
         _ => Err(eyre::eyre!(
@@ -36,10 +36,9 @@ fn convert_pubkey_to_g1_point(pubkey: &BlsPublicKey) -> Result<G1Point> {
 
 /// Converts a signature to its corresponding affine G2 point form for EVM precompile usage
 fn convert_signature_to_g2_point(signature: &BlsSignature) -> Result<G2Point> {
-    let signature_bytes = signature.serialize();
     let mut signature_affine = blst_p2_affine::default();
     let uncompress_result =
-        unsafe { blst_p2_uncompress(&mut signature_affine, signature_bytes.as_ptr()) };
+        unsafe { blst_p2_uncompress(&mut signature_affine, signature.as_ptr()) };
     match uncompress_result {
         BLST_ERROR::BLST_SUCCESS => Ok(()),
         _ => Err(eyre::eyre!(
@@ -113,13 +112,13 @@ pub fn get_delegation_signing_root(delegation: &Delegation) -> Result<B256> {
     let proposer = convert_pubkey_to_g1_point(&delegation.proposer).map_err(|e| {
         eyre!(
             "Error converting proposer pubkey {} to G1 point: {e:?}",
-            delegation.proposer.as_hex_string()
+            delegation.proposer.to_string()
         )
     })?;
     let delegate = convert_pubkey_to_g1_point(&delegation.delegate).map_err(|e| {
         eyre!(
             "Error converting delegate pubkey {} to G1 point: {e:?}",
-            delegation.delegate.as_hex_string()
+            delegation.delegate.to_string()
         )
     })?;
     let delegation_evm = SolDelegation {
@@ -156,13 +155,13 @@ pub fn get_constraints_message_signing_root(constraints: &ConstraintsMessage) ->
     let proposer = convert_pubkey_to_g1_point(&constraints.proposer).map_err(|e| {
         eyre!(
             "Error converting proposer pubkey {} to G1 point: {e:?}",
-            constraints.proposer.as_hex_string()
+            constraints.proposer.to_string()
         )
     })?;
     let delegate = convert_pubkey_to_g1_point(&constraints.delegate).map_err(|e| {
         eyre!(
             "Error converting delegate pubkey {} to G1 point: {e:?}",
-            constraints.delegate.as_hex_string()
+            constraints.delegate.to_string()
         )
     })?;
 
@@ -247,7 +246,7 @@ mod tests {
     fn bls_pubkey_from_hex(hex_str: &str) -> BlsPublicKey {
         let hex_str = hex_str.strip_prefix("0x").unwrap_or(hex_str);
         let bytes = hex::decode(hex_str).unwrap();
-        BlsPublicKey::deserialize(&bytes).unwrap()
+        BlsPublicKey::new(bytes.try_into().unwrap())
     }
 
     #[test]

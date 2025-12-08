@@ -1,4 +1,4 @@
-use commit_boost::prelude::BlsPublicKey;
+use alloy::rpc::types::beacon::BlsPublicKey;
 use eyre::Result;
 use std::sync::Arc;
 use std::time::Duration;

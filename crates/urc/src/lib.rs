@@ -2,7 +2,7 @@ mod bindings;
 pub mod utils;
 
 use alloy::primitives::{Address, B256, U256};
-use commit_boost::prelude::{BlsPublicKey, BlsSignature};
+use alloy::rpc::types::beacon::{BlsPublicKey, BlsSignature};
 
 /// Binding of the MessageType enum, defined here:
 /// https://github.com/eth-fabric/urc/blob/304e59f967dd8fdf4342c2f776f789e7c99b8ef9/src/IRegistry.sol#L99

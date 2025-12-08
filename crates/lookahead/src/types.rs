@@ -1,4 +1,4 @@
-use commit_boost::prelude::BlsPublicKey;
+use alloy::rpc::types::beacon::BlsPublicKey;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 
@@ -31,18 +31,9 @@ impl ValidatorDuty {
     pub fn parse_pubkey(&self) -> Result<BlsPublicKey> {
         let pubkey_str = self.pubkey.strip_prefix("0x").unwrap_or(&self.pubkey);
         let bytes = hex::decode(pubkey_str)?;
-
-        if bytes.len() != 48 {
-            return Err(eyre::eyre!(
-                "Invalid BLS public key length: expected 48 bytes, got {}",
-                bytes.len()
-            ));
-        }
-
-        let mut pubkey = [0u8; 48];
-        pubkey.copy_from_slice(&bytes);
-        BlsPublicKey::deserialize(&pubkey)
-            .map_err(|e| eyre::eyre!("Failed to deserialize BLS public key: {:?}", e))
+        Ok(BlsPublicKey::new(bytes.try_into().map_err(|e| {
+            eyre::eyre!("Failed to convert bytes to BLS public key: {:?}", e)
+        })?))
     }
 
     pub fn parse_slot(&self) -> Result<u64> {
@@ -131,7 +122,7 @@ mod tests {
         };
 
         let parsed_pubkey = duty.parse_pubkey().unwrap();
-        assert_eq!(parsed_pubkey.serialize().len(), 48);
+        assert_eq!(parsed_pubkey.len(), 48);
 
         // Verify parsing works without 0x prefix too
         let duty_no_prefix = ValidatorDuty {
@@ -185,7 +176,7 @@ mod tests {
 
         let result = duty.parse_pubkey();
         assert!(result.is_ok(), "Should parse pubkey with 0x prefix");
-        assert_eq!(result.unwrap().serialize().len(), 48);
+        assert_eq!(result.unwrap().len(), 48);
     }
 
     #[test]
@@ -205,7 +196,7 @@ mod tests {
 
         let result = duty.parse_pubkey();
         assert!(result.is_ok(), "Should parse pubkey without 0x prefix");
-        assert_eq!(result.unwrap().serialize().len(), 48);
+        assert_eq!(result.unwrap().len(), 48);
     }
 
     #[test]

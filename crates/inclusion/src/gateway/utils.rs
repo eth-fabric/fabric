@@ -5,7 +5,8 @@ use alloy::consensus::{SignableTransaction, TxEnvelope};
 use alloy::network::{Ethereum, TransactionBuilder};
 use alloy::primitives::{Address, B256, Bytes, U256};
 use alloy::providers::{DynProvider, Provider};
-use commit_boost::prelude::{BlsPublicKey, Chain, commit::client::SignerClient};
+use alloy::rpc::types::beacon::{BlsPublicKey, BlsSignature};
+use commit_boost::prelude::{Chain, commit::client::SignerClient};
 
 use commitments::types::{Commitment, CommitmentRequest, FeeInfo, SignedCommitment};
 use constraints::types::{Constraint, ConstraintsMessage, SignedConstraints};
@@ -443,7 +444,7 @@ pub async fn sign_constraints_message(
         message: message.clone(),
         nonce: response.nonce,
         signing_id: response.module_signing_id,
-        signature: response.signature,
+        signature: BlsSignature::new(response.signature.serialize()),
     };
 
     debug!("Signed constraints created successfully");

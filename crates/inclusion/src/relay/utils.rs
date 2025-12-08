@@ -1,10 +1,10 @@
 use alloy::primitives::Address;
+use alloy::rpc::types::beacon::BlsPublicKey;
 use common::storage::DatabaseContext;
 use eyre::{Result, eyre};
 use tracing::info;
 
-use commit_boost::prelude::{BlsPublicKey, Chain};
-
+use commit_boost::prelude::Chain;
 use constraints::types::{
     Constraint, ConstraintProofs, ConstraintsMessage, Delegation, SignedConstraints,
     SignedDelegation, SubmitBlockRequestWithProofs,
@@ -27,21 +27,14 @@ pub fn verify_constraints_signature(
     let signing_root = get_constraints_message_signing_root(&signed_constraints.message)?;
 
     // Use the delegate public key from the message for verification
-    let is_valid = verify_bls(
+    verify_bls(
         chain.clone(),
         &signed_constraints.message.delegate,
         &signing_root,
         &signed_constraints.signature,
         &signed_constraints.signing_id,
         signed_constraints.nonce,
-    );
-
-    if is_valid {
-        info!("Constraints signature verification successful");
-        Ok(())
-    } else {
-        Err(eyre!("Constraints signature verification failed"))
-    }
+    )
 }
 
 /// Verify BLS signature on a SignedDelegation message using the proposer public key from the message
@@ -53,21 +46,14 @@ pub fn verify_delegation_signature(
     let signing_root = get_delegation_signing_root(&signed_delegation.message)?;
 
     // Use the proposer public key from the message for verification
-    let is_valid = verify_bls(
+    verify_bls(
         chain.clone(),
         &signed_delegation.message.proposer,
         &signing_root,
         &signed_delegation.signature,
         &signed_delegation.signing_id,
         signed_delegation.nonce,
-    );
-
-    if is_valid {
-        info!("Delegation signature verification successful");
-        Ok(())
-    } else {
-        Err(eyre!("Delegation signature verification failed"))
-    }
+    )
 }
 
 /// Validate delegation message structure
@@ -220,7 +206,7 @@ mod tests {
     use super::*;
     use alloy::primitives::Bytes;
     use alloy::primitives::hex;
-    use commit_boost::prelude::BlsPublicKey;
+    use alloy::rpc::types::beacon::BlsPublicKey;
 
     #[test]
     fn test_validate_delegation_message_zero_committer() {
@@ -232,8 +218,8 @@ mod tests {
         let chain = Chain::Mainnet;
 
         let delegation = Delegation {
-            proposer: BlsPublicKey::deserialize(&valid_bls_key).unwrap(),
-            delegate: BlsPublicKey::deserialize(&valid_bls_key).unwrap(),
+            proposer: BlsPublicKey::new(valid_bls_key.clone().try_into().unwrap()),
+            delegate: BlsPublicKey::new(valid_bls_key.try_into().unwrap()),
             committer: Address::ZERO,
             slot: 12345,
             metadata: Bytes::from(vec![0x01, 0x02]),
@@ -256,8 +242,8 @@ mod tests {
         let current_slot = current_slot(&chain);
 
         let delegation = Delegation {
-            proposer: BlsPublicKey::deserialize(&valid_bls_key).unwrap(),
-            delegate: BlsPublicKey::deserialize(&valid_bls_key).unwrap(),
+            proposer: BlsPublicKey::new(valid_bls_key.clone().try_into().unwrap()),
+            delegate: BlsPublicKey::new(valid_bls_key.try_into().unwrap()),
             committer: "0x1234567890123456789012345678901234567890"
                 .parse()
                 .unwrap(),
@@ -284,8 +270,8 @@ mod tests {
         let current_slot = current_slot(&chain);
 
         let delegation = Delegation {
-            proposer: BlsPublicKey::deserialize(&valid_bls_key).unwrap(),
-            delegate: BlsPublicKey::deserialize(&valid_bls_key).unwrap(),
+            proposer: BlsPublicKey::new(valid_bls_key.clone().try_into().unwrap()),
+            delegate: BlsPublicKey::new(valid_bls_key.try_into().unwrap()),
             committer: "0x1234567890123456789012345678901234567890"
                 .parse()
                 .unwrap(),
@@ -311,8 +297,8 @@ mod tests {
         let current_slot = current_slot(&chain);
 
         let constraints_message = ConstraintsMessage {
-            proposer: BlsPublicKey::deserialize(&valid_bls_key).unwrap(),
-            delegate: BlsPublicKey::deserialize(&valid_bls_key).unwrap(),
+            proposer: BlsPublicKey::new(valid_bls_key.clone().try_into().unwrap()),
+            delegate: BlsPublicKey::new(valid_bls_key.try_into().unwrap()),
             slot: current_slot - 1, // Slot in the past
             constraints: vec![],
             receivers: vec![],
@@ -337,8 +323,8 @@ mod tests {
         let current_slot = current_slot(&chain);
 
         let constraints_message = ConstraintsMessage {
-            proposer: BlsPublicKey::deserialize(&valid_bls_key).unwrap(),
-            delegate: BlsPublicKey::deserialize(&valid_bls_key).unwrap(),
+            proposer: BlsPublicKey::new(valid_bls_key.clone().try_into().unwrap()),
+            delegate: BlsPublicKey::new(valid_bls_key.try_into().unwrap()),
             slot: current_slot, // Current slot
             constraints: vec![],
             receivers: vec![],
@@ -363,8 +349,8 @@ mod tests {
         let current_slot = current_slot(&chain);
 
         let constraints_message = ConstraintsMessage {
-            proposer: BlsPublicKey::deserialize(&valid_bls_key).unwrap(),
-            delegate: BlsPublicKey::deserialize(&valid_bls_key).unwrap(),
+            proposer: BlsPublicKey::new(valid_bls_key.clone().try_into().unwrap()),
+            delegate: BlsPublicKey::new(valid_bls_key.try_into().unwrap()),
             slot: current_slot + 10, // Future slot
             constraints: vec![],
             receivers: vec![],
