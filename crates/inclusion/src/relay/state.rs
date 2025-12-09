@@ -1,4 +1,3 @@
-use alloy::primitives::B256;
 use commit_boost::prelude::Chain;
 use reqwest::Client;
 use std::net::IpAddr;
@@ -25,8 +24,6 @@ pub struct RelayState {
     pub beacon_client: BeaconApiClient<ReqwestClient>,
     /// Client to call downstream relay
     pub downstream_relay_client: LegacyRelayClient,
-    /// Module signing ID for inclusion preconfs
-    pub module_signing_id: B256,
     /// Chain ID
     pub chain: Chain,
     /// How often to update the lookahead window
@@ -60,7 +57,7 @@ impl RelayState {
 
         // Create beacon client
         let beacon_client = BeaconApiClient::with_default_client(BeaconApiConfig {
-            primary_endpoint: config.beacon_api_url.to_string(),
+            primary_endpoint: format!("{}:{}", config.beacon_api_host, config.beacon_api_port),
             fallback_endpoints: vec![],
             request_timeout_secs: 30,
             genesis_time: chain.genesis_time_sec(),
@@ -72,8 +69,6 @@ impl RelayState {
             LegacyRelayClient::new(config.downstream_relay_url.to_string())
                 .expect("Failed to create downstream relay client");
 
-        // Create client to call downstream relay
-        let module_signing_id = B256::from_slice(config.module_signing_id.as_bytes());
         let lookahead_update_interval = config.lookahead_update_interval;
         let constraint_capabilities = ConstraintCapabilities {
             constraint_types: config.constraint_capabilities,
@@ -84,7 +79,6 @@ impl RelayState {
             port,
             beacon_client,
             chain,
-            module_signing_id,
             lookahead_update_interval,
             downstream_relay_client,
             constraint_capabilities,

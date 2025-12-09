@@ -65,8 +65,14 @@ impl GatewayState {
         .expect("Failed to parse metrics address");
 
         // Create execution client
-        let execution_client_url = Url::parse(config.extra.execution_client.as_str())
-            .expect("Failed to parse execution client URL from config");
+        let execution_client_url = Url::parse(
+            format!(
+                "{}:{}",
+                config.extra.execution_client_host, config.extra.execution_client_port
+            )
+            .as_str(),
+        )
+        .expect("Failed to parse execution client URL from config");
         let execution_client = ProviderBuilder::new()
             .network::<Ethereum>()
             .connect_http(execution_client_url)

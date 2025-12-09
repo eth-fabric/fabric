@@ -51,7 +51,10 @@ impl ProposerState {
 
         // Create beacon client
         let beacon_client = BeaconApiClient::with_default_client(BeaconApiConfig {
-            primary_endpoint: config.extra.beacon_api_url.to_string(),
+            primary_endpoint: format!(
+                "{}:{}",
+                config.extra.beacon_api_host, config.extra.beacon_api_port
+            ),
             fallback_endpoints: vec![],
             request_timeout_secs: 30,
             genesis_time: config.chain.genesis_time_sec(),

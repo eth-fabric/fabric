@@ -21,8 +21,11 @@ pub struct ProposerConfig {
     /// API key for the Relay server (constraints API)
     pub relay_api_key: Option<String>,
 
-    /// Beacon API URL for fetching proposer duties
-    pub beacon_api_url: String,
+    /// Host of the Beacon API for fetching proposer duties
+    pub beacon_api_host: String,
+
+    /// Port of the Beacon API for fetching proposer duties
+    pub beacon_api_port: u16,
 
     /// How often to poll for proposer duties (in seconds)
     pub lookahead_check_interval_seconds: u64,

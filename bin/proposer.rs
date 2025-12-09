@@ -37,7 +37,10 @@ async fn setup_state() -> Result<ProposerState> {
         "  Constraints URL: {}/{}",
         config.relay_host, config.relay_port
     );
-    info!("  Beacon API URL: {}", config.beacon_api_url);
+    info!(
+        "  Beacon API URL: {}:{}",
+        config.beacon_api_host, config.beacon_api_port
+    );
     info!("  Module signing ID: {}", config.module_signing_id);
     info!("  Chain: {}", state.chain);
     info!(

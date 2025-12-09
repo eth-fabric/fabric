@@ -27,8 +27,11 @@ pub struct GatewayConfig {
     /// API key for the Relay server (constraints API)
     pub relay_api_key: Option<String>,
 
-    /// Execution client configuration
-    pub execution_client: String,
+    /// Host of the Execution client
+    pub execution_client_host: String,
+
+    /// Port of the Execution client
+    pub execution_client_port: u16,
 
     /// Constraints receivers
     pub constraints_receivers: Vec<String>,
@@ -38,8 +41,6 @@ pub struct GatewayConfig {
 
     // Commitments-specific configuration
     pub log_level: String,
-    pub enable_method_tracing: bool,
-    pub traced_methods: Vec<String>,
 
     /// How often to check for new delegations
     pub delegation_check_interval_seconds: u64,

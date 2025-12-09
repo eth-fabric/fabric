@@ -6,7 +6,6 @@ use commitments::client::CommitmentsHttpClient;
 use eyre::{Result, WrapErr};
 use lookahead::utils::current_slot_estimate;
 use serde::Deserialize;
-use std::env;
 use std::time::Duration;
 use tokio::time;
 use tracing::{error, info};
@@ -23,8 +22,10 @@ use urc::utils::get_commitment_request_signing_root;
 struct SpammerConfig {
     /// Mode: "one-shot" or "continuous"
     mode: String,
-    /// Gateway RPC endpoint
-    gateway_url: String,
+    /// Gateway RPC (commitments) host
+    gateway_host: String,
+    /// Gateway RPC (commitments) port
+    gateway_port: u16,
     /// Interval between requests in seconds (only used in continuous mode)
     interval_secs: u64,
     /// Sender private key (must have ETH balance for test transactions)
@@ -33,19 +34,6 @@ struct SpammerConfig {
     slasher_address: Option<String>,
     /// Chain ID for transactions
     chain: Chain,
-    /// Genesis timestamp for slot calculation
-    genesis_timestamp: u64,
-    /// Transaction parameters
-    transaction: TransactionConfig,
-}
-
-/// Transaction configuration
-#[derive(Debug, Deserialize)]
-struct TransactionConfig {
-    gas_limit: u64,
-    max_fee_per_gas: u128,
-    max_priority_fee_per_gas: u128,
-    value_wei: u128,
 }
 
 /// Generate a valid signed transaction
@@ -62,11 +50,11 @@ fn generate_signed_transaction(
             .try_into()
             .expect("Chain ID conversion failed"),
         nonce,
-        gas_limit: config.transaction.gas_limit,
-        max_fee_per_gas: config.transaction.max_fee_per_gas,
-        max_priority_fee_per_gas: config.transaction.max_priority_fee_per_gas,
+        gas_limit: 21000,
+        max_fee_per_gas: 20000000000,
+        max_priority_fee_per_gas: 2000000000,
         to: TxKind::Call(Address::random()), // Random recipient address
-        value: U256::from(config.transaction.value_wei),
+        value: U256::from(100000000),
         input: Bytes::new(),
         access_list: Default::default(),
     };
@@ -94,7 +82,7 @@ fn create_commitment_request(
     signed_tx: Bytes,
 ) -> Result<CommitmentRequest> {
     // Get current slot
-    let current_slot = current_slot_estimate(config.genesis_timestamp);
+    let current_slot = current_slot_estimate(config.chain.genesis_time_sec());
 
     // Create inclusion payload
     let inclusion_payload = InclusionPayload {
@@ -146,8 +134,9 @@ async fn run_one_shot(config: &SpammerConfig, signer: &PrivateKeySigner) -> Resu
     info!("Created commitment request with hash: {:?}", signing_hash);
 
     // Send request
-    info!("Sending commitment request to {}", config.gateway_url);
-    let response = send_commitment_request(&config.gateway_url, &request).await?;
+    let gateway_url = format!("http://{}:{}", config.gateway_host, config.gateway_port);
+    info!("Sending commitment request to {}", gateway_url);
+    let response = send_commitment_request(gateway_url.as_str(), &request).await?;
 
     info!("✓ Commitment request successful!");
     info!("  Request hash: {:?}", response.commitment.request_hash);
@@ -167,6 +156,8 @@ async fn run_continuous(config: &SpammerConfig, signer: &PrivateKeySigner) -> Re
     let mut interval = time::interval(Duration::from_secs(config.interval_secs));
     let mut nonce = 0u64;
 
+    let gateway_url = format!("http://{}:{}", config.gateway_host, config.gateway_port);
+
     let mut shutdown = Box::pin(common::utils::wait_for_signal());
     loop {
         tokio::select! {
@@ -179,7 +170,7 @@ async fn run_continuous(config: &SpammerConfig, signer: &PrivateKeySigner) -> Re
                             Ok(request) => {
                                 let signing_root = get_commitment_request_signing_root(&request);
                                 info!("Request hash: {:?}", signing_root);
-                                match send_commitment_request(&config.gateway_url, &request).await {
+                                match send_commitment_request(gateway_url.as_str(), &request).await {
                                     Ok(response) => {
                                         info!("Commitment request successful!");
                                         info!("Signing root: {:?}", response.commitment.request_hash);
@@ -212,12 +203,8 @@ async fn run_continuous(config: &SpammerConfig, signer: &PrivateKeySigner) -> Re
 #[tokio::main]
 async fn main() -> Result<()> {
     // Get config file path from args or use default
-    let args: Vec<String> = env::args().collect();
-    let config_path = if args.len() > 1 {
-        &args[1]
-    } else {
-        "spammer-config.toml"
-    };
+    let config_path =
+        std::env::var("CONFIG_PATH").expect("CONFIG_PATH environment variable not set");
 
     info!("Loading configuration from: {}", config_path);
 
@@ -229,9 +216,11 @@ async fn main() -> Result<()> {
 
     info!("Configuration loaded successfully");
     info!("  Mode: {}", config.mode);
-    info!("  Gateway URL: {}", config.gateway_url);
+    info!(
+        "  Gateway URL: {}:{}",
+        config.gateway_host, config.gateway_port
+    );
     info!("  Chain ID: {}", config.chain.id());
-    info!("  Genesis timestamp: {}", config.genesis_timestamp);
 
     // Parse sender private key
     let signer = config

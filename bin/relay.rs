@@ -7,7 +7,6 @@ use inclusion::relay::{
     services::{lookahead_manager::LookaheadManager, server::RelayServer},
     state::RelayState,
 };
-use std::env;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
@@ -31,9 +30,8 @@ fn setup_state(path: &str) -> Result<RelayState> {
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     // Get config path from command line arguments
-    let config_path = env::args()
-        .nth(1)
-        .unwrap_or_else(|| "config/relay.config.toml".to_string());
+    let config_path =
+        std::env::var("CONFIG_PATH").expect("CONFIG_PATH environment variable not set");
 
     // Setup state
     let state = Arc::new(setup_state(config_path.as_str())?);
