@@ -109,10 +109,6 @@ impl<H: HttpClient> BeaconApiClient<H> {
     ///
     pub fn new(config: BeaconApiConfig, http_client: H) -> Result<Self> {
         // Validate configuration
-        if config.primary_endpoint.trim().is_empty() {
-            eyre::bail!("Primary endpoint cannot be empty");
-        }
-
         if config.request_timeout_secs == 0 {
             eyre::bail!("Request timeout must be greater than zero");
         }
@@ -143,7 +139,7 @@ impl<H: HttpClient> BeaconApiClient<H> {
 
         // Try primary endpoint
         match self
-            .make_request(&self.config.primary_endpoint, &endpoint)
+            .make_request(&self.config.primary_endpoint.to_string(), &endpoint)
             .await
         {
             Ok(response) => return Ok(response),
@@ -160,7 +156,10 @@ impl<H: HttpClient> BeaconApiClient<H> {
 
         // Try fallback endpoints
         for fallback_endpoint in &self.config.fallback_endpoints {
-            match self.make_request(fallback_endpoint, &endpoint).await {
+            match self
+                .make_request(fallback_endpoint.to_string().as_str(), &endpoint)
+                .await
+            {
                 Ok(response) => {
                     debug!(
                         endpoint = %fallback_endpoint,
@@ -243,7 +242,7 @@ impl<H: HttpClient> BeaconApiClient<H> {
 
         // Try primary endpoint
         match self
-            .make_request::<ValidatorResponse>(&self.config.primary_endpoint, &endpoint)
+            .make_request::<ValidatorResponse>(&self.config.primary_endpoint.to_string(), &endpoint)
             .await
         {
             Ok(response) => return Self::parse_validator_info(&response.data),
@@ -261,7 +260,10 @@ impl<H: HttpClient> BeaconApiClient<H> {
         // Try fallback endpoints
         for fallback_endpoint in &self.config.fallback_endpoints {
             match self
-                .make_request::<ValidatorResponse>(fallback_endpoint, &endpoint)
+                .make_request::<ValidatorResponse>(
+                    fallback_endpoint.to_string().as_str(),
+                    &endpoint,
+                )
                 .await
             {
                 Ok(response) => {
@@ -399,6 +401,8 @@ impl BeaconApiClient<ReqwestClient> {
 
 #[cfg(test)]
 mod tests {
+    use reqwest::Url;
+
     use super::*;
     use crate::types::{BeaconApiConfig, ValidatorDetails};
 
@@ -414,8 +418,10 @@ mod tests {
     ///
     fn create_test_config() -> BeaconApiConfig {
         BeaconApiConfig {
-            primary_endpoint: "https://eth-mainnet.g.alchemy.com/v2/test".to_string(),
-            fallback_endpoints: vec!["https://beacon-nd-123-456-789.p2pify.com".to_string()],
+            primary_endpoint: Url::parse("https://eth-mainnet.g.alchemy.com/v2/test").unwrap(),
+            fallback_endpoints: vec![
+                Url::parse("https://beacon-nd-123-456-789.p2pify.com").unwrap(),
+            ],
             request_timeout_secs: 30,
             genesis_time: 1606824023, // Ethereum mainnet genesis
         }
@@ -423,8 +429,8 @@ mod tests {
 
     fn create_test_config_with_short_timeout() -> BeaconApiConfig {
         BeaconApiConfig {
-            primary_endpoint: "https://invalid-endpoint.test".to_string(),
-            fallback_endpoints: vec!["https://another-invalid-endpoint.test".to_string()],
+            primary_endpoint: Url::parse("https://invalid-endpoint.test").unwrap(),
+            fallback_endpoints: vec![Url::parse("https://another-invalid-endpoint.test").unwrap()],
             request_timeout_secs: 1, // Very short timeout
             genesis_time: 1606824023,
         }
@@ -432,7 +438,7 @@ mod tests {
 
     fn create_test_config_no_fallbacks() -> BeaconApiConfig {
         BeaconApiConfig {
-            primary_endpoint: "https://invalid-endpoint.test".to_string(),
+            primary_endpoint: Url::parse("https://invalid-endpoint.test").unwrap(),
             fallback_endpoints: vec![],
             request_timeout_secs: 1,
             genesis_time: 1606824023,
@@ -513,26 +519,8 @@ mod tests {
         // Test that invalid configurations are properly rejected
         let mut config = create_test_config();
 
-        // Test with empty primary endpoint
-        config.primary_endpoint = "".to_string();
-        let client = BeaconApiClient::with_default_client(config.clone());
-        assert!(client.is_err(), "Should reject empty primary endpoint");
-        let error_msg = format!("{}", client.unwrap_err());
-        assert!(
-            error_msg.contains("Primary endpoint cannot be empty"),
-            "Error should mention empty endpoint"
-        );
-
-        // Test with whitespace-only primary endpoint
-        config.primary_endpoint = "   ".to_string();
-        let client = BeaconApiClient::with_default_client(config.clone());
-        assert!(
-            client.is_err(),
-            "Should reject whitespace-only primary endpoint"
-        );
-
         // Test with zero timeout
-        config.primary_endpoint = "https://valid-endpoint.com".to_string();
+        config.primary_endpoint = Url::parse("https://valid-endpoint.com").unwrap();
         config.request_timeout_secs = 0;
         let client = BeaconApiClient::with_default_client(config);
         assert!(client.is_err(), "Should reject zero timeout");
@@ -547,7 +535,7 @@ mod tests {
     fn test_client_creation_with_minimal_valid_config() {
         // Test that minimal valid configurations work
         let config = BeaconApiConfig {
-            primary_endpoint: "https://minimal.example.com".to_string(),
+            primary_endpoint: Url::parse("https://minimal.example.com").unwrap(),
             fallback_endpoints: vec![], // Empty fallbacks should be fine
             request_timeout_secs: 1,    // Minimal valid timeout
             genesis_time: 0,            // Any genesis time should be fine
@@ -564,11 +552,11 @@ mod tests {
     #[test]
     fn test_fallback_endpoint_order() {
         let config = BeaconApiConfig {
-            primary_endpoint: "https://primary.test".to_string(),
+            primary_endpoint: Url::parse("https://primary.test").unwrap(),
             fallback_endpoints: vec![
-                "https://fallback1.test".to_string(),
-                "https://fallback2.test".to_string(),
-                "https://fallback3.test".to_string(),
+                Url::parse("https://fallback1.test").unwrap(),
+                Url::parse("https://fallback2.test").unwrap(),
+                Url::parse("https://fallback3.test").unwrap(),
             ],
             request_timeout_secs: 1,
             genesis_time: 1606824023,
@@ -580,15 +568,15 @@ mod tests {
         assert_eq!(client.config.fallback_endpoints.len(), 3);
         assert_eq!(
             client.config.fallback_endpoints[0],
-            "https://fallback1.test"
+            Url::parse("https://fallback1.test").unwrap()
         );
         assert_eq!(
             client.config.fallback_endpoints[1],
-            "https://fallback2.test"
+            Url::parse("https://fallback2.test").unwrap()
         );
         assert_eq!(
             client.config.fallback_endpoints[2],
-            "https://fallback3.test"
+            Url::parse("https://fallback3.test").unwrap()
         );
     }
 
@@ -623,7 +611,7 @@ mod tests {
     async fn test_real_beacon_api_integration() {
         // This test would use real beacon endpoints and should only run in integration test mode
         let config = BeaconApiConfig {
-            primary_endpoint: "https://beacon-nd-123-456-789.p2pify.com".to_string(),
+            primary_endpoint: Url::parse("https://beacon-nd-123-456-789.p2pify.com").unwrap(),
             fallback_endpoints: vec![],
             request_timeout_secs: 10,
             genesis_time: 1606824023,
@@ -1074,13 +1062,13 @@ mod tests {
     #[test]
     fn test_config_with_multiple_fallbacks() {
         let config = BeaconApiConfig {
-            primary_endpoint: "https://primary.test".to_string(),
+            primary_endpoint: Url::parse("https://primary.test").unwrap(),
             fallback_endpoints: vec![
-                "https://fallback1.test".to_string(),
-                "https://fallback2.test".to_string(),
-                "https://fallback3.test".to_string(),
-                "https://fallback4.test".to_string(),
-                "https://fallback5.test".to_string(),
+                Url::parse("https://fallback1.test").unwrap(),
+                Url::parse("https://fallback2.test").unwrap(),
+                Url::parse("https://fallback3.test").unwrap(),
+                Url::parse("https://fallback4.test").unwrap(),
+                Url::parse("https://fallback5.test").unwrap(),
             ],
             request_timeout_secs: 5,
             genesis_time: 1606824023,
@@ -1093,7 +1081,7 @@ mod tests {
     #[test]
     fn test_config_with_large_timeout() {
         let config = BeaconApiConfig {
-            primary_endpoint: "https://test.example.com".to_string(),
+            primary_endpoint: Url::parse("https://test.example.com").unwrap(),
             fallback_endpoints: vec![],
             request_timeout_secs: 300, // 5 minutes
             genesis_time: 1606824023,
@@ -1115,7 +1103,7 @@ mod tests {
 
         for genesis in configs {
             let config = BeaconApiConfig {
-                primary_endpoint: "https://test.example.com".to_string(),
+                primary_endpoint: Url::parse("https://test.example.com").unwrap(),
                 fallback_endpoints: vec![],
                 request_timeout_secs: 10,
                 genesis_time: genesis,
@@ -1266,17 +1254,26 @@ mod tests {
         let fallback2 = "https://fallback2.example.com/custom/path";
 
         let config = BeaconApiConfig {
-            primary_endpoint: primary.to_string(),
-            fallback_endpoints: vec![fallback1.to_string(), fallback2.to_string()],
+            primary_endpoint: Url::parse(primary).unwrap(),
+            fallback_endpoints: vec![
+                Url::parse(fallback1).unwrap(),
+                Url::parse(fallback2).unwrap(),
+            ],
             request_timeout_secs: 10,
             genesis_time: 1606824023,
         };
 
         let client = BeaconApiClient::with_default_client(config).unwrap();
 
-        assert_eq!(client.config.primary_endpoint, primary);
-        assert_eq!(client.config.fallback_endpoints[0], fallback1);
-        assert_eq!(client.config.fallback_endpoints[1], fallback2);
+        assert_eq!(client.config.primary_endpoint, Url::parse(primary).unwrap());
+        assert_eq!(
+            client.config.fallback_endpoints[0],
+            Url::parse(fallback1).unwrap()
+        );
+        assert_eq!(
+            client.config.fallback_endpoints[1],
+            Url::parse(fallback2).unwrap()
+        );
     }
 
     #[test]
@@ -1387,11 +1384,11 @@ mod tests {
         };
 
         let config = BeaconApiConfig {
-            primary_endpoint: "https://primary.test".to_string(),
+            primary_endpoint: Url::parse("https://primary.test").unwrap(),
             fallback_endpoints: vec![
-                "https://fallback1.test".to_string(),
-                "https://fallback2.test".to_string(),
-                "https://fallback3.test".to_string(),
+                Url::parse("https://fallback1.test").unwrap(),
+                Url::parse("https://fallback2.test").unwrap(),
+                Url::parse("https://fallback3.test").unwrap(),
             ],
             request_timeout_secs: 30,
             genesis_time: 1606824023,

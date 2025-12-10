@@ -1,5 +1,6 @@
 use axum::{Json, Router, extract::Path, routing::get};
 use eyre::Result;
+use lookahead::constants::PROPOSER_DUTIES_ROUTE;
 use lookahead::types::{ProposerDutiesResponse, ValidatorDuty};
 use lookahead::utils::{epoch_to_first_slot, epoch_to_last_slot};
 use tracing::info;
@@ -66,7 +67,8 @@ async fn main() -> Result<()> {
     // Build router with proposer key as shared state
     let app = Router::new()
         .route(
-            "/eth/v1/validator/duties/proposer/{epoch}",
+            format!("/{}/{{epoch}}", PROPOSER_DUTIES_ROUTE).as_str(),
+            // PROPOSER_DUTIES_ROUTE,
             get(get_proposer_duties_handler),
         )
         .with_state(proposer_key);

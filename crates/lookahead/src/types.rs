@@ -1,15 +1,16 @@
 use alloy::rpc::types::beacon::BlsPublicKey;
 use common::utils::decode_pubkey;
 use eyre::Result;
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 
 /// Configuration for Beacon API integration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BeaconApiConfig {
-    /// Primary beacon node endpoint (e.g., Alchemy)
-    pub primary_endpoint: String,
+    /// Primary beacon node endpoint
+    pub primary_endpoint: Url,
     /// Fallback beacon node endpoints
-    pub fallback_endpoints: Vec<String>,
+    pub fallback_endpoints: Vec<Url>,
     /// Request timeout in seconds
     pub request_timeout_secs: u64,
     /// Beacon chain genesis time (Unix timestamp)

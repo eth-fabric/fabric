@@ -1,5 +1,5 @@
 use commit_boost::prelude::Chain;
-use reqwest::Client;
+use reqwest::{Client, Url};
 use std::net::IpAddr;
 
 use common::storage::DatabaseContext;
@@ -57,7 +57,14 @@ impl RelayState {
 
         // Create beacon client
         let beacon_client = BeaconApiClient::with_default_client(BeaconApiConfig {
-            primary_endpoint: format!("{}:{}", config.beacon_api_host, config.beacon_api_port),
+            primary_endpoint: Url::parse(
+                format!(
+                    "http://{}:{}",
+                    config.beacon_api_host, config.beacon_api_port
+                )
+                .as_str(),
+            )
+            .unwrap(),
             fallback_endpoints: vec![],
             request_timeout_secs: 30,
             genesis_time: chain.genesis_time_sec(),
