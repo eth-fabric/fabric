@@ -6,7 +6,6 @@ use std::time::Duration;
 use async_trait::async_trait;
 use eyre::{Result, eyre};
 use reqwest::Client;
-use tracing::{error, info};
 
 use crate::metrics::client_http_metrics;
 use crate::routes;
@@ -95,7 +94,6 @@ impl ConstraintsClient for HttpConstraintsClient {
         let start = metrics.start(ENDPOINT, METHOD);
 
         let url = self.full_url(ENDPOINT);
-        info!("GET capabilities from: {url}");
 
         let mut req = self.client.get(&url);
         req = self.auth_header(req);
@@ -116,7 +114,6 @@ impl ConstraintsClient for HttpConstraintsClient {
             Ok(caps)
         } else {
             let text = resp.text().await.unwrap_or_default();
-            error!("Failed to get capabilities: {status} - {text}");
             Err(eyre!(
                 "Failed to get capabilities (status {status}): {text}"
             ))
@@ -131,7 +128,6 @@ impl ConstraintsClient for HttpConstraintsClient {
         let start = metrics.start(ENDPOINT, METHOD);
 
         let url = self.full_url(ENDPOINT);
-        info!("Posting constraints to: {url}");
 
         let mut req = self.client.post(&url).json(signed_constraints);
         req = self.auth_header(req);
@@ -148,11 +144,9 @@ impl ConstraintsClient for HttpConstraintsClient {
         metrics.finish_status(ENDPOINT, METHOD, status.as_u16(), start);
 
         if status.is_success() {
-            info!("Successfully posted constraints (status: {status})");
             Ok(())
         } else {
             let text = resp.text().await.unwrap_or_default();
-            error!("Failed to post constraints: {status} - {text}");
             Err(eyre!(
                 "Failed to post constraints (status {status}): {text}"
             ))
@@ -168,7 +162,6 @@ impl ConstraintsClient for HttpConstraintsClient {
 
         let path = ENDPOINT.replace("{slot}", &slot.to_string());
         let url = self.full_url(&path);
-        info!("GET constraints for slot {slot} from: {url}");
 
         let mut req = self.client.get(&url);
         req = self.auth_header(req);
@@ -186,14 +179,9 @@ impl ConstraintsClient for HttpConstraintsClient {
 
         if status.is_success() {
             let result: ConstraintsResponse = resp.json().await?;
-            info!(
-                "Successfully retrieved {} constraints for slot {slot}",
-                result.constraints.len()
-            );
             Ok(result.constraints)
         } else {
             let text = resp.text().await.unwrap_or_default();
-            error!("Failed to get constraints for slot {slot}: {status} - {text}");
             Err(eyre!(
                 "Failed to get constraints for slot {slot} (status {status}): {text}"
             ))
@@ -208,7 +196,6 @@ impl ConstraintsClient for HttpConstraintsClient {
         let start = metrics.start(ENDPOINT, METHOD);
 
         let url = self.full_url(ENDPOINT);
-        info!("Posting delegation to: {url}");
 
         let mut req = self.client.post(&url).json(signed_delegation);
         req = self.auth_header(req);
@@ -225,11 +212,9 @@ impl ConstraintsClient for HttpConstraintsClient {
         metrics.finish_status(ENDPOINT, METHOD, status.as_u16(), start);
 
         if status.is_success() {
-            info!("Successfully posted delegation (status: {status})");
             Ok(())
         } else {
             let text = resp.text().await.unwrap_or_default();
-            error!("Failed to post delegation: {status} - {text}");
             Err(eyre!("Failed to post delegation (status {status}): {text}"))
         }
     }
@@ -243,7 +228,6 @@ impl ConstraintsClient for HttpConstraintsClient {
 
         let path = ENDPOINT.replace("{slot}", &slot.to_string());
         let url = self.full_url(&path);
-        info!("GET delegations for slot {slot} from: {url}");
 
         let mut req = self.client.get(&url);
         req = self.auth_header(req);
@@ -261,14 +245,9 @@ impl ConstraintsClient for HttpConstraintsClient {
 
         if status.is_success() {
             let result: DelegationsResponse = resp.json().await?;
-            info!(
-                "Successfully retrieved {} delegations for slot {slot}",
-                result.delegations.len()
-            );
             Ok(result.delegations)
         } else {
             let text = resp.text().await.unwrap_or_default();
-            error!("Failed to get delegations for slot {slot}: {status} - {text}");
             Err(eyre!(
                 "Failed to get delegations for slot {slot} (status {status}): {text}"
             ))
@@ -286,7 +265,6 @@ impl ConstraintsClient for HttpConstraintsClient {
         let start = metrics.start(ENDPOINT, METHOD);
 
         let url = self.full_url(ENDPOINT);
-        info!("Posting blocks_with_proofs to: {url}");
 
         let mut req = self.client.post(&url).json(blocks_with_proofs);
         req = self.auth_header(req);
@@ -303,11 +281,9 @@ impl ConstraintsClient for HttpConstraintsClient {
         metrics.finish_status(ENDPOINT, METHOD, status.as_u16(), start);
 
         if status.is_success() {
-            info!("Successfully posted blocks_with_proofs (status: {status})");
             Ok(())
         } else {
             let text = resp.text().await.unwrap_or_default();
-            error!("Failed to post blocks_with_proofs: {status} - {text}");
             Err(eyre!(
                 "Failed to post blocks_with_proofs (status {status}): {text}"
             ))
@@ -322,7 +298,6 @@ impl ConstraintsClient for HttpConstraintsClient {
         let start = metrics.start(ENDPOINT, METHOD);
 
         let url = self.full_url(ENDPOINT);
-        info!("Checking relay health at: {url}");
 
         let req = self.client.get(&url).timeout(Duration::from_secs(5));
 

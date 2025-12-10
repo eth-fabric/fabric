@@ -420,7 +420,10 @@ gateway_public_key = "{gateway_public_key}"
                 .expect("gateway BLS proxy key not set"),
             module_signing_id = self.config.gateway_module_signing_id,
             delegation_check_interval_seconds = self.config.delegation_check_interval_seconds,
-            gateway_public_key = self.config.gateway_default_bls_key
+            gateway_public_key = self
+                .gateway_bls_proxy
+                .clone()
+                .expect("gateway BLS proxy key not set")
         ));
 
         let toml = doc.parse::<DocumentMut>().expect("invalid gateway toml");
@@ -509,7 +512,6 @@ beacon_api_host = "{beacon_api_host}"
 beacon_api_port = {beacon_api_port}
 lookahead_update_interval = {lookahead_update_interval}
 downstream_relay_url = "{downstream_relay_url}"
-log_level = "{log_level}"
 "#,
             chain = self.config.chain,
             relay_host = self.config.relay_host,
@@ -520,7 +522,6 @@ log_level = "{log_level}"
             beacon_api_port = self.config.beacon_mock_port,
             lookahead_update_interval = self.config.lookahead_update_interval,
             downstream_relay_url = self.config.downstream_relay_url,
-            log_level = self.config.log_level,
         );
 
         let toml = doc.parse::<DocumentMut>().expect("invalid relay toml");

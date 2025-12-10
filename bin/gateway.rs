@@ -26,8 +26,10 @@ fn setup_state() -> Result<GatewayState> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialize tracing
-    tracing_subscriber::fmt::init();
+    // Setup logging
+    common::logging::setup_logging(
+        &std::env::var("RUST_LOG").expect("RUST_LOG environment variable not set"),
+    )?;
 
     info!("Starting gateway service (commitments server + gateway tasks)");
 

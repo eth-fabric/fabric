@@ -3,7 +3,7 @@ use eyre::Result;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use crate::storage::LookaheadDbExt;
 use lookahead::utils::{current_slot, epoch_to_first_slot, epoch_to_last_slot, slot_to_epoch};
@@ -42,16 +42,16 @@ impl LookaheadManager {
         // Calculate current epoch
         let current_epoch = slot_to_epoch(current_slot(&self.state.chain));
 
-        info!(
-            "Updating proposer lookahead for epochs {} to {}",
-            current_epoch,
-            current_epoch + 1
-        );
-
         // Populate each epoch in the range
         for epoch in current_epoch..=current_epoch + 1 {
             self.populate_lookahead(epoch, None).await?;
         }
+
+        info!(
+            "Lookahead updated for epochs {} to {}",
+            current_epoch,
+            current_epoch + 1
+        );
 
         Ok(())
     }

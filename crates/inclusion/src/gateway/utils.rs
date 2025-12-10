@@ -309,7 +309,7 @@ pub fn create_constraint_from_commitment_request(
     request: &CommitmentRequest,
     slot: u64,
 ) -> Result<Constraint> {
-    info!(
+    debug!(
         "Creating constraint from commitment request for slot {}",
         slot
     );
@@ -320,7 +320,7 @@ pub fn create_constraint_from_commitment_request(
         payload: request.payload.clone(),
     };
 
-    info!(
+    debug!(
         "Created constraint with type {} and payload length {} for slot {}",
         constraint.constraint_type,
         constraint.payload.len(),

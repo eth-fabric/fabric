@@ -4,7 +4,7 @@ use commitments::server::CommitmentsServerInfo;
 use jsonrpsee::core::RpcResult;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tracing::debug;
+use tracing::{debug, info};
 
 use commitments::rpc::CommitmentsRpcServer;
 use commitments::types::{
@@ -132,6 +132,11 @@ impl CommitmentsRpcServer for GatewayRpc {
         debug!(
             "Stored commitment and constraint for slot {}",
             inclusion_payload.slot
+        );
+
+        info!(
+            "Signed commitment, slot {}, request hash {:?}",
+            inclusion_payload.slot, signed_commitment.commitment.request_hash
         );
 
         // Return the signed commitment

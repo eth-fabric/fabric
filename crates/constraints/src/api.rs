@@ -39,5 +39,5 @@ pub trait ConstraintsApi: Send + Sync + Clone + 'static {
     ) -> Result<()>;
 
     /// GET /health
-    async fn health_check(&self) -> Result<bool>;
+    async fn health_check(&self) -> Result<()>;
 }

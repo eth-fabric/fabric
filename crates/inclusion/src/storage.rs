@@ -342,6 +342,7 @@ impl LookaheadDbExt for DatabaseContext {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloy::primitives::Bytes;
     use common::storage::db::DbOp;
     use eyre::Result;
     use rocksdb::Options;
@@ -605,6 +606,37 @@ mod tests {
         assert_eq!(hashes[0], h1);
         assert_eq!(hashes[1], h2);
         assert_eq!(hashes[2], h3);
+
+        Ok(())
+    }
+
+    #[test]
+    fn constraints_range_scan_single_slot() -> Result<()> {
+        let db = new_temp_db()?;
+
+        let c = Constraint {
+            constraint_type: 1,
+            payload: Bytes::from([0x01u8; 32]),
+        };
+        let h = B256::from([0x01u8; 32]);
+        let key = constraint_key(10, &h);
+
+        db.put_json(&key, &c)?;
+
+        // Verify slot scan works for a single slot
+        let slots = super::scan_slot_range_kind::<Constraint>(&db, KIND_CONSTRAINT, 10, 10)?;
+        assert_eq!(slots.len(), 1);
+        assert_eq!(slots[0].0, 10);
+        assert_eq!(slots[0].1.constraint_type, c.constraint_type);
+        assert_eq!(slots[0].1.payload, c.payload);
+
+        // Verify get_constraints_in_range works for a single slot
+        let constraints = db.get_constraints_in_range(10, 10)?;
+        assert_eq!(constraints.len(), 1);
+        assert_eq!(constraints[0].0, 10);
+        // no bytes32 stored since we used put_json
+        assert_eq!(constraints[0].2.constraint_type, c.constraint_type);
+        assert_eq!(constraints[0].2.payload, c.payload);
 
         Ok(())
     }

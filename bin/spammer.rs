@@ -15,7 +15,6 @@ use commit_boost::prelude::Chain;
 use commitments::types::{CommitmentRequest, SignedCommitment};
 use inclusion::constants::INCLUSION_COMMITMENT_TYPE;
 use inclusion::types::InclusionPayload;
-use urc::utils::get_commitment_request_signing_root;
 
 /// Configuration for the spammer
 #[derive(Debug, Deserialize)]
@@ -84,9 +83,12 @@ fn create_commitment_request(
     // Get current slot
     let current_slot = current_slot_estimate(config.chain.genesis_time_sec());
 
+    // Send the commitment for a future slot
+    let future_slot = current_slot + 1;
+
     // Create inclusion payload
     let inclusion_payload = InclusionPayload {
-        slot: current_slot,
+        slot: future_slot,
         signed_tx,
     };
 
@@ -120,29 +122,29 @@ async fn send_commitment_request(
     commitments_client.commitment_request(request.clone()).await
 }
 
+async fn create_and_send_commitment_request(
+    config: &SpammerConfig,
+    signer: &PrivateKeySigner,
+    nonce: u64,
+) -> Result<SignedCommitment> {
+    let gateway_url = format!("http://{}:{}", config.gateway_host, config.gateway_port);
+    let tx = generate_signed_transaction(config, signer, nonce)?;
+    let request = create_commitment_request(config, tx)?;
+    let response = send_commitment_request(gateway_url.as_str(), &request).await?;
+    Ok(response)
+}
+
 /// Run in one-shot mode
 async fn run_one_shot(config: &SpammerConfig, signer: &PrivateKeySigner) -> Result<()> {
-    info!("Running in one-shot mode");
-
-    // Generate transaction with nonce 0
-    let signed_tx = generate_signed_transaction(config, signer, 0)?;
-    info!("Generated signed transaction ({} bytes)", signed_tx.len());
-
-    // Create commitment request
-    let request = create_commitment_request(config, signed_tx)?;
-    let signing_hash = get_commitment_request_signing_root(&request);
-    info!("Created commitment request with hash: {:?}", signing_hash);
-
-    // Send request
-    let gateway_url = format!("http://{}:{}", config.gateway_host, config.gateway_port);
-    info!("Sending commitment request to {}", gateway_url);
-    let response = send_commitment_request(gateway_url.as_str(), &request).await?;
-
-    info!("✓ Commitment request successful!");
-    info!("  Request hash: {:?}", response.commitment.request_hash);
-    info!("  Commitment type: {}", response.commitment.commitment_type);
-    info!("  Slasher: {:?}", response.commitment.slasher);
-
+    match create_and_send_commitment_request(config, signer, 0).await {
+        Ok(response) => {
+            info!("Commitment request successful!");
+            info!("Request hash: {:?}", response.commitment.request_hash);
+        }
+        Err(e) => {
+            error!("✗ Failed to create and send commitment request: {}", e);
+        }
+    }
     Ok(())
 }
 
@@ -156,38 +158,17 @@ async fn run_continuous(config: &SpammerConfig, signer: &PrivateKeySigner) -> Re
     let mut interval = time::interval(Duration::from_secs(config.interval_secs));
     let mut nonce = 0u64;
 
-    let gateway_url = format!("http://{}:{}", config.gateway_host, config.gateway_port);
-
     let mut shutdown = Box::pin(common::utils::wait_for_signal());
     loop {
         tokio::select! {
             _ = interval.tick() => {
-                info!("--- Sending commitment request #{} ---", nonce + 1);
-                match generate_signed_transaction(config, signer, nonce) {
-                    Ok(signed_tx) => {
-                        info!("Generated signed transaction ({} bytes)", signed_tx.len());
-                        match create_commitment_request(config, signed_tx) {
-                            Ok(request) => {
-                                let signing_root = get_commitment_request_signing_root(&request);
-                                info!("Request hash: {:?}", signing_root);
-                                match send_commitment_request(gateway_url.as_str(), &request).await {
-                                    Ok(response) => {
-                                        info!("Commitment request successful!");
-                                        info!("Signing root: {:?}", response.commitment.request_hash);
-                                        nonce += 1;
-                                    }
-                                    Err(e) => {
-                                        error!("✗ Failed to send commitment request: {}", e);
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                error!("✗ Failed to create commitment request: {}", e);
-                            }
-                        }
+                match create_and_send_commitment_request(config, signer, nonce).await {
+                    Ok(response) => {
+                        info!("Commitment request successful, request hash {:?}, signature {:?}", response.commitment.request_hash, response.signature.to_string());
+                        nonce += 1;
                     }
                     Err(e) => {
-                        error!("✗ Failed to generate signed transaction: {}", e);
+                        error!("✗ Failed to create and send commitment request: {}", e);
                     }
                 }
             }
@@ -202,13 +183,13 @@ async fn run_continuous(config: &SpammerConfig, signer: &PrivateKeySigner) -> Re
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Read env vars
-    let log_level = std::env::var("RUST_LOG").unwrap_or("info".to_string());
+    // Setup logging
+    common::logging::setup_logging(
+        &std::env::var("RUST_LOG").expect("RUST_LOG environment variable not set"),
+    )?;
+
     let config_path =
         std::env::var("CONFIG_PATH").expect("CONFIG_PATH environment variable not set");
-
-    // Setup logging
-    common::logging::setup_logging(&log_level)?;
 
     info!("Loading configuration from: {}", config_path);
 

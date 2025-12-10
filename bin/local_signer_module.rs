@@ -10,7 +10,10 @@ pub const SIGNER_MODULE_NAME: &str = "signer";
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let _guard = initialize_tracing_log(SIGNER_MODULE_NAME, LogsSettings::from_env_config()?);
+    // Setup logging
+    common::logging::setup_logging(
+        &std::env::var("RUST_LOG").expect("RUST_LOG environment variable not set"),
+    )?;
 
     let config = StartSignerConfig::load_from_env()?;
     let server = SigningService::run(config);

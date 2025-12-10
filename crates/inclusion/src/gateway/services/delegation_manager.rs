@@ -1,4 +1,4 @@
-use eyre::{Result, eyre};
+use eyre::Result;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -45,11 +45,6 @@ impl DelegationManager {
         let current_slot = current_slot(&self.state.chain);
         let lookahead_end = current_slot + LOOKAHEAD_WINDOW_SIZE;
 
-        info!(
-            "Checking delegations for slots {} to {}",
-            current_slot, lookahead_end
-        );
-
         // Batch read known delegated slots
         let delegated_slots = self
             .state
@@ -59,50 +54,52 @@ impl DelegationManager {
             .map(|(slot, _)| slot)
             .collect::<Vec<u64>>();
 
+        let mut count = 0;
         // Check each slot in the lookahead window
         for slot in current_slot..=lookahead_end {
             if delegated_slots.contains(&slot) {
-                debug!("Slot {} already has delegations, skipping", slot);
+                count += 1;
                 continue;
             }
 
             // Process but don't return on error to continue processing other slots
-            if let Err(e) = self.get_delegations_from_relay(slot).await {
-                warn!("Failed to process delegations for slot {}: {}", slot, e);
+            match self.get_delegations_from_relay(slot).await {
+                Ok(found) => {
+                    count += found;
+                }
+                Err(e) => {
+                    warn!("Failed to process delegations for slot {}: {}", slot, e);
+                }
             }
         }
+
+        info!("{} delegations in the current epoch", count);
 
         Ok(())
     }
 
     /// Use the constraints API to get delegations for a specific slot
-    async fn get_delegations_from_relay(&self, slot: u64) -> Result<()> {
+    async fn get_delegations_from_relay(&self, slot: u64) -> Result<u64> {
+        debug!("Getting delegations for slot {}", slot);
+        let mut found = 0;
         let delegations = self.state.constraints_client.get_delegations(slot).await?;
 
         // It's assumed there is only one delegation for a given slot
         match delegations.first() {
             Some(delegation) => {
-                info!("Retrieved delegation from relay for slot {}", slot);
-
                 if delegation.message.delegate != self.state.gateway_public_key {
-                    info!(
-                        "Delegation for slot {} does not match gateway public key",
-                        slot
-                    );
-                    return Err(eyre!(
-                        "Delegation for slot {} does not match gateway public key",
-                        slot
-                    ));
+                    // Don't error out if the delegation is not for the gateway public key
+                    return Ok(found);
                 }
 
                 // Store delegation in the database to prevent reprocessing
                 self.state.db.store_delegation(&delegation)?;
+                found += 1;
+                info!("Delegation found for slot {}", slot);
 
-                info!("Successfully stored delegation for slot {}", slot);
-
-                Ok(())
+                Ok(found)
             }
-            None => Ok(()),
+            None => Ok(found),
         }
     }
 }

@@ -59,7 +59,10 @@ async fn setup_state() -> Result<ProposerState> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
+    // Setup logging
+    common::logging::setup_logging(
+        &std::env::var("RUST_LOG").expect("RUST_LOG environment variable not set"),
+    )?;
 
     // Setup state
     let state = setup_state().await?;
@@ -89,16 +92,11 @@ async fn main() -> Result<()> {
         );
 
         // Process lookahead to find and post delegations
-        match delegation_manager.process_lookahead().await {
-            Ok(()) => {
-                info!("Lookahead processed successfully for slot {}", current_slot);
-            }
-            Err(e) => {
-                error!(
-                    "Error processing lookahead for slot {}: {}",
-                    current_slot, e
-                );
-            }
+        if let Err(e) = delegation_manager.process_lookahead().await {
+            error!(
+                "Error processing lookahead for slot {}: {}",
+                current_slot, e
+            );
         }
     }
 }

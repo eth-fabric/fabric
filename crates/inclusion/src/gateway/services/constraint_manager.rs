@@ -3,7 +3,7 @@ use eyre::Result;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::time::sleep;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::constants::CONSTRAINT_TRIGGER_OFFSET;
 use crate::gateway::state::GatewayState;
@@ -48,10 +48,6 @@ impl ConstraintManager {
                 // Check if constraints have already been finalized for this slot to prevent reprocessing
                 match self.state.db.signed_constraints_finalized(target_slot) {
                     Ok(true) => {
-                        info!(
-                            "Constraints already posted for slot {}, skipping",
-                            target_slot
-                        );
                         // Sleep for a longer interval since we don't need to process this slot
                         tokio::time::sleep(Duration::from_secs(1)).await;
                         return Ok(());
@@ -61,14 +57,13 @@ impl ConstraintManager {
                         let now = SystemTime::now()
                             .duration_since(UNIX_EPOCH)
                             .unwrap()
-                            .as_secs();
-                        let trigger_time = (time_until_next_slot(&self.state.chain)
-                            - CONSTRAINT_TRIGGER_OFFSET)
-                            as u64;
+                            .as_secs() as i64;
+                        let trigger_time =
+                            time_until_next_slot(&self.state.chain) - CONSTRAINT_TRIGGER_OFFSET;
 
                         if now >= trigger_time {
                             // Time to process constraints for this slot
-                            info!(
+                            debug!(
                                 "Triggering constraints processing for slot {} ({} seconds before slot start)",
                                 target_slot, CONSTRAINT_TRIGGER_OFFSET
                             );
@@ -81,14 +76,14 @@ impl ConstraintManager {
                         } else {
                             // Wait until it's time to trigger
                             let wait_duration = trigger_time - now;
-                            info!(
+                            debug!(
                                 "Slot {} is delegated, waiting {} seconds until trigger time",
                                 target_slot, wait_duration
                             );
-                            tokio::time::sleep(Duration::from_secs(wait_duration)).await;
+                            tokio::time::sleep(Duration::from_secs(wait_duration as u64)).await;
 
                             // Now process constraints
-                            info!("Triggering constraints processing for slot {}", target_slot);
+                            debug!("Triggering constraints processing for slot {}", target_slot);
                             if let Err(e) = self.post_constraints(target_slot, delegation).await {
                                 warn!(
                                     "Failed to process constraints for slot {}: {}",
@@ -136,7 +131,7 @@ impl ConstraintManager {
             .collect();
 
         if constraints.is_empty() {
-            info!("No constraints found for slot {}", slot);
+            debug!("Delegated, but no constraints to post for slot {}", slot);
             return Ok(());
         }
 
@@ -164,12 +159,10 @@ impl ConstraintManager {
             .post_constraints(&signed_constraints)
             .await?;
 
-        info!("Successfully posted constraints for slot {} to relay", slot);
-
         // Mark constraints as posted for this slot to prevent reprocessing
         self.state.db.finalize_signed_constraints(slot)?;
 
-        info!("Successfully finalized constraints for slot {}", slot);
+        info!("Successfully posted constraints for slot {}", slot);
 
         Ok(())
     }

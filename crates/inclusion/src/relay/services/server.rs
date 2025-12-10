@@ -15,7 +15,7 @@ use eyre::{Result, eyre};
 use lookahead::utils::current_slot;
 use reqwest::Client;
 use signing::signer::verify_bls;
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::relay::{
     state::RelayState,
@@ -58,15 +58,15 @@ impl ProxyState for RelayServer {
 impl ConstraintsApi for RelayServer {
     /// POST /constraints
     async fn post_constraints(&self, signed_constraints: SignedConstraints) -> Result<()> {
-        info!("validate_constraints_message()");
+        debug!("validate_constraints_message()");
         // Validate constraints message structure
         validate_constraints_message(&signed_constraints.message, &self.state.chain)?;
 
-        info!("verify_constraints_signature()");
+        debug!("verify_constraints_signature()");
         // Verify BLS signature using the delegate public key from the message
         verify_constraints_signature(&signed_constraints, &self.state.chain)?;
 
-        info!("validate_is_gateway()");
+        debug!("validate_is_gateway()");
         // Verify a delegation exists and is for the correct gateway
         validate_is_gateway(
             &signed_constraints.message.delegate,
@@ -74,11 +74,16 @@ impl ConstraintsApi for RelayServer {
             &self.state.db,
         )?;
 
-        info!("store_signed_constraints()");
+        debug!("store_signed_constraints()");
         // Store signed constraints in database
         self.state
             .db
             .store_signed_constraints(&signed_constraints)?;
+
+        info!(
+            "Received signed constraints for slot {} from {}",
+            signed_constraints.message.slot, signed_constraints.message.delegate
+        );
 
         Ok(())
     }
@@ -114,7 +119,7 @@ impl ConstraintsApi for RelayServer {
         // Compute slot hash for signature verification
         let slot_hash = keccak256(&slot.to_be_bytes());
 
-        info!("verifying slot signature");
+        debug!("verifying slot signature");
         // Verify caller's signature against the slot hash using standardized commit-boost verification
         verify_bls(
             self.state.chain,
@@ -153,15 +158,15 @@ impl ConstraintsApi for RelayServer {
 
     /// POST /delegation
     async fn post_delegation(&self, signed_delegation: SignedDelegation) -> Result<()> {
-        info!("validate_delegation_message()");
+        debug!("validate_delegation_message()");
         // Validate delegation message is for a future slot
         validate_delegation_message(&signed_delegation.message, &self.state.chain)?;
 
-        info!("verify_delegation_signature()");
+        debug!("verify_delegation_signature()");
         // Verify delegation was signed by proposer
         verify_delegation_signature(&signed_delegation, &self.state.chain)?;
 
-        info!("validate_is_proposer()");
+        debug!("validate_is_proposer()");
         // Validate proposer is scheduled for this slot
         validate_is_proposer(
             &signed_delegation.message.proposer,
@@ -169,7 +174,7 @@ impl ConstraintsApi for RelayServer {
             &self.state.db,
         )?;
 
-        info!("checking for existing delegation");
+        debug!("checking for existing delegation");
         // Check for existing delegation to prevent equivocation
         if self.state.db.is_delegated(signed_delegation.message.slot)? {
             return Err(eyre!(
@@ -178,23 +183,32 @@ impl ConstraintsApi for RelayServer {
             ));
         }
 
-        info!("storing delegation in database");
+        debug!("storing delegation in database");
         // Store delegation in database
         self.state.db.store_delegation(&signed_delegation)?;
+
+        info!(
+            "Delegation posted for slot {}, key={:?}",
+            signed_delegation.message.slot, signed_delegation.message.proposer
+        );
 
         Ok(())
     }
 
     /// GET /delegations/{slot}
     async fn get_delegations(&self, slot: u64) -> Result<DelegationsResponse> {
-        let delegation = self
-            .state
-            .db
-            .get_delegation(slot)?
-            .ok_or(eyre!("No delegation found for slot {}", slot))?;
-        Ok(DelegationsResponse {
-            delegations: vec![delegation],
-        })
+        match self.state.db.get_delegation(slot)? {
+            Some(delegation) => {
+                return Ok(DelegationsResponse {
+                    delegations: vec![delegation],
+                });
+            }
+            None => {
+                return Ok(DelegationsResponse {
+                    delegations: vec![],
+                });
+            }
+        }
     }
 
     /// POST /blocks_with_proofs
@@ -206,7 +220,7 @@ impl ConstraintsApi for RelayServer {
         // Get the slot
         let slot = block_request.slot();
 
-        info!("fetching signed constraints from database");
+        debug!("fetching signed constraints from database");
         // Fetch constraints from database for the slot
         let signed_constraints = self
             .state
@@ -214,11 +228,11 @@ impl ConstraintsApi for RelayServer {
             .get_signed_constraints(slot)?
             .ok_or(eyre!("No signed constraints found for slot {}", slot))?;
 
-        info!("validating proofs");
+        debug!("validating proofs");
         // Validate the proofs
         handle_proof_validation(&block_request, signed_constraints)?;
 
-        info!("submitting block request to downstream relay");
+        debug!("submitting block request to downstream relay");
         // Make the legacy submit block request to the downnstream relay
         self.state
             .downstream_relay_client
@@ -234,7 +248,7 @@ impl ConstraintsApi for RelayServer {
     }
 
     /// GET /health
-    async fn health_check(&self) -> Result<bool> {
-        Ok(true)
+    async fn health_check(&self) -> Result<()> {
+        Ok(())
     }
 }

@@ -1,4 +1,3 @@
-use common::logging::setup_logging;
 use common::storage::create_database;
 use constraints::server::build_constraints_router_with_proxy;
 use eyre::Result;
@@ -15,10 +14,8 @@ fn setup_state(path: &str) -> Result<RelayState> {
     // Read config .toml file
     let content = std::fs::read_to_string(path)?;
     let config: RelayConfig = toml::from_str(&content)?;
-    info!("Loaded relay config");
 
-    // Setup logging
-    setup_logging(&config.log_level)?;
+    info!("Loaded relay config");
 
     // Initialize database
     let db = create_database(config.db_path.as_str())
@@ -32,6 +29,11 @@ async fn main() -> eyre::Result<()> {
     // Get config path from command line arguments
     let config_path =
         std::env::var("CONFIG_PATH").expect("CONFIG_PATH environment variable not set");
+
+    // Setup logging
+    common::logging::setup_logging(
+        &std::env::var("RUST_LOG").expect("RUST_LOG environment variable not set"),
+    )?;
 
     // Setup state
     let state = Arc::new(setup_state(config_path.as_str())?);

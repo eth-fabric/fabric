@@ -7,7 +7,6 @@ use axum::{
     response::IntoResponse,
     routing::{get, post},
 };
-use tracing::error;
 
 use crate::api::ConstraintsApi;
 use crate::metrics::server_http_metrics;
@@ -76,16 +75,11 @@ where
     let start = metrics.start(ENDPOINT, METHOD);
 
     match api.health_check().await {
-        Ok(true) => {
+        Ok(()) => {
             metrics.finish_status(ENDPOINT, METHOD, 200, start);
             StatusCode::OK
         }
-        Ok(false) => {
-            metrics.finish_status(ENDPOINT, METHOD, 503, start);
-            StatusCode::SERVICE_UNAVAILABLE
-        }
-        Err(e) => {
-            error!("health_check error: {e:?}");
+        Err(_) => {
             metrics.finish_status(ENDPOINT, METHOD, 500, start);
             StatusCode::INTERNAL_SERVER_ERROR
         }
@@ -109,7 +103,6 @@ where
             (StatusCode::OK, Json(capabilities)).into_response()
         }
         Err(e) => {
-            error!("get_capabilities error: {e:?}");
             metrics.finish_status(ENDPOINT, METHOD, 500, start);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -140,7 +133,6 @@ where
             StatusCode::OK.into_response()
         }
         Err(e) => {
-            error!("post_constraints error: {e:?}");
             metrics.finish_status(
                 ENDPOINT,
                 METHOD,
@@ -178,7 +170,6 @@ where
                 (StatusCode::OK, Json(constraints)).into_response()
             }
             Err(e) => {
-                error!("get_constraints error (slot={slot}): {e:?}");
                 metrics.finish_status(
                     ENDPOINT,
                     METHOD,
@@ -193,7 +184,6 @@ where
             }
         },
         Err(e) => {
-            error!("get_constraints error (slot={slot}): {e:?}");
             return (
                 StatusCode::BAD_REQUEST,
                 format!("failed to get constraints for slot {slot}: {e}"),
@@ -223,7 +213,6 @@ where
             StatusCode::OK.into_response()
         }
         Err(e) => {
-            error!("post_delegation error: {e:?}");
             metrics.finish_status(
                 ENDPOINT,
                 METHOD,
@@ -256,7 +245,6 @@ where
             (StatusCode::OK, Json(delegations)).into_response()
         }
         Err(e) => {
-            error!("get_delegations error (slot={slot}): {e:?}");
             metrics.finish_status(
                 ENDPOINT,
                 METHOD,
@@ -293,7 +281,6 @@ where
             StatusCode::OK.into_response()
         }
         Err(e) => {
-            error!("post_blocks_with_proofs error: {e:?}");
             metrics.finish_status(
                 ENDPOINT,
                 METHOD,

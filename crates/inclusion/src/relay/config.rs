@@ -28,7 +28,4 @@ pub struct RelayConfig {
 
     /// Downstream relay URL for proxying unhandled requests
     pub downstream_relay_url: String,
-
-    /// Log level
-    pub log_level: String,
 }

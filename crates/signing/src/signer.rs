@@ -44,7 +44,7 @@ pub async fn call_proxy_ecdsa_signer(
         module_signing_id,
         proxy_response_ecdsa.nonce,
     ) {
-        Ok(_) => info!("Signature verified successfully"),
+        Ok(_) => debug!("Signature verified successfully"),
         Err(err) => error!(%err, "Signature verification failed"),
     };
 
@@ -84,7 +84,7 @@ pub async fn call_proxy_bls_signer(
         module_signing_id,
         proxy_response_bls.nonce,
     ) {
-        true => info!("Signature verified successfully"),
+        true => debug!("Signature verified successfully"),
         false => error!("Signature verification failed"),
     };
 
@@ -126,7 +126,7 @@ pub async fn call_bls_signer(
         module_signing_id,
         bls_response.nonce,
     ) {
-        true => info!("Consensus signature verified successfully"),
+        true => debug!("Consensus signature verified successfully"),
         false => error!("Consensus signature verification failed"),
     };
 

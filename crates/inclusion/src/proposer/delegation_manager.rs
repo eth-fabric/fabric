@@ -49,7 +49,7 @@ impl DelegationManager {
             return Ok(());
         }
 
-        info!(
+        debug!(
             "Processing lookahead for {} consensus key(s)",
             our_pubkeys.len()
         );
@@ -58,9 +58,12 @@ impl DelegationManager {
         let current_epoch = slot_to_epoch(current_slot(&self.state.chain));
 
         // Check duties for both current and next epoch
+        let mut count = 0;
         for epoch in [current_epoch, current_epoch + 1] {
-            self.process_epoch_duties(epoch, &our_pubkeys).await?;
+            count += self.process_epoch_duties(epoch, &our_pubkeys).await?;
         }
+
+        info!("{} keys have delegated in current epoch", count);
 
         Ok(())
     }
@@ -79,7 +82,7 @@ impl DelegationManager {
             .await
             .context("Failed to get proposer duties")?;
 
-        let mut posted_count = 0;
+        let mut count = 0;
 
         // Check each duty to see if it's for one of our proposers
         for duty in duties.data {
@@ -92,15 +95,16 @@ impl DelegationManager {
             // 1. Match one of our proposer keys
             // 2. Are in the future (slot > current_slot)
             if our_pubkeys.contains(&duty_pubkey) && duty_slot > current_slot(&self.state.chain) {
-                info!("Found proposer duty for slot {}", duty_slot);
+                debug!("Found proposer duty for slot {}", duty_slot);
                 let existing_delegation = self.state.db.get_delegation(duty_slot)?;
 
                 if existing_delegation.is_some() {
-                    warn!(
+                    debug!(
                         "Delegation already exists for slot {}. Skipping to prevent equivocation. Existing delegation: proposer={:?}",
                         duty_slot,
                         existing_delegation.unwrap().message.proposer
                     );
+                    count += 1;
                     continue;
                 }
 
@@ -116,12 +120,10 @@ impl DelegationManager {
                 )
                 .await?;
 
-                info!("Signed delegation: {:?}", signed_delegation);
-
                 // Store before sending to prevent equivocation
                 self.state.db.store_delegation(&signed_delegation)?;
 
-                info!("Stored delegation for slot {}", duty_slot);
+                debug!("Signed and stored delegation for slot {}", duty_slot);
 
                 // Post to relay
                 self.state
@@ -129,12 +131,15 @@ impl DelegationManager {
                     .post_delegation(&signed_delegation)
                     .await?;
 
-                info!("Posted delegation for slot {}", duty_slot);
+                info!(
+                    "Posted delegation for slot {}, key={:?}",
+                    duty_slot, duty_pubkey
+                );
 
-                posted_count += 1;
+                count += 1;
             }
         }
 
-        Ok(posted_count)
+        Ok(count)
     }
 }
