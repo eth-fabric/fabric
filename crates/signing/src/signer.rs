@@ -1,231 +1,207 @@
 use alloy::primitives::{Address, B256};
-use alloy::rpc::types::beacon::{
-    BlsPublicKey as AlloyBlsPublicKey, BlsSignature as AlloyBlsSignature,
-};
+use alloy::rpc::types::beacon::{BlsPublicKey as AlloyBlsPublicKey, BlsSignature as AlloyBlsSignature};
 use commit_boost::prelude::{
-    BlsPublicKey, BlsSignature, Chain, EcdsaSignature,
-    commit::{
-        client::SignerClient,
-        request::{SignConsensusRequest, SignProxyRequest},
-        response::{BlsSignResponse, EcdsaSignResponse},
-    },
-    verify_proposer_commitment_signature_bls_for_message,
-    verify_proposer_commitment_signature_ecdsa_for_message,
+	BlsPublicKey, BlsSignature, Chain, EcdsaSignature,
+	commit::{
+		client::SignerClient,
+		request::{SignConsensusRequest, SignProxyRequest},
+		response::{BlsSignResponse, EcdsaSignResponse},
+	},
+	verify_proposer_commitment_signature_bls_for_message, verify_proposer_commitment_signature_ecdsa_for_message,
 };
 use eyre::{Context, Result, eyre};
 use tracing::{debug, error, info};
 
 /// Calls the proxy_ecdsa signer to sign a hash
 pub async fn call_proxy_ecdsa_signer(
-    signer_client: &mut SignerClient,
-    message_hash: B256,
-    committer: Address,
-    module_signing_id: &B256,
-    chain: Chain,
+	signer_client: &mut SignerClient,
+	message_hash: B256,
+	committer: Address,
+	module_signing_id: &B256,
+	chain: Chain,
 ) -> Result<EcdsaSignResponse> {
-    debug!(
-        "Calling proxy_ecdsa signer for message hash: {:?}",
-        message_hash
-    );
+	debug!("Calling proxy_ecdsa signer for message hash: {:?}", message_hash);
 
-    let proxy_request_ecdsa = SignProxyRequest::builder(committer).with_root(message_hash);
+	let proxy_request_ecdsa = SignProxyRequest::builder(committer).with_root(message_hash);
 
-    // Make the actual API call to the signer service
-    let proxy_response_ecdsa = signer_client
-        .request_proxy_signature_ecdsa(proxy_request_ecdsa)
-        .await
-        .wrap_err("Failed to request proxy signature from signer service")?;
+	// Make the actual API call to the signer service
+	let proxy_response_ecdsa = signer_client
+		.request_proxy_signature_ecdsa(proxy_request_ecdsa)
+		.await
+		.wrap_err("Failed to request proxy signature from signer service")?;
 
-    match verify_proposer_commitment_signature_ecdsa_for_message(
-        chain,
-        &committer,
-        &message_hash,
-        &proxy_response_ecdsa.signature,
-        module_signing_id,
-        proxy_response_ecdsa.nonce,
-    ) {
-        Ok(_) => debug!("Signature verified successfully"),
-        Err(err) => error!(%err, "Signature verification failed"),
-    };
+	match verify_proposer_commitment_signature_ecdsa_for_message(
+		chain,
+		&committer,
+		&message_hash,
+		&proxy_response_ecdsa.signature,
+		module_signing_id,
+		proxy_response_ecdsa.nonce,
+	) {
+		Ok(_) => debug!("Signature verified successfully"),
+		Err(err) => error!(%err, "Signature verification failed"),
+	};
 
-    Ok(proxy_response_ecdsa)
+	Ok(proxy_response_ecdsa)
 }
 
 /// Calls the proxy_bls signer to sign a hash
 pub async fn call_proxy_bls_signer(
-    signer_client: &mut SignerClient,
-    message_hash: B256,
-    bls_public_key: AlloyBlsPublicKey,
-    module_signing_id: &B256,
-    chain: Chain,
+	signer_client: &mut SignerClient,
+	message_hash: B256,
+	bls_public_key: AlloyBlsPublicKey,
+	module_signing_id: &B256,
+	chain: Chain,
 ) -> Result<BlsSignResponse> {
-    debug!(
-        "Calling proxy_bls signer for message hash: {:?}",
-        message_hash
-    );
-    // Convert the AlloyBlsPublicKey to a commit-boost BlsPublicKey
-    let bls_public_key = BlsPublicKey::deserialize(&bls_public_key.to_vec())
-        .map_err(|e| eyre!("Failed to deserialize BLS public key: {:?}", e))?;
+	debug!("Calling proxy_bls signer for message hash: {:?}", message_hash);
+	// Convert the AlloyBlsPublicKey to a commit-boost BlsPublicKey
+	let bls_public_key = BlsPublicKey::deserialize(&bls_public_key.to_vec())
+		.map_err(|e| eyre!("Failed to deserialize BLS public key: {:?}", e))?;
 
-    let proxy_request_bls =
-        SignProxyRequest::builder(bls_public_key.clone()).with_root(message_hash);
+	let proxy_request_bls = SignProxyRequest::builder(bls_public_key.clone()).with_root(message_hash);
 
-    // Make the actual API call to the signer service
-    let proxy_response_bls = signer_client
-        .request_proxy_signature_bls(proxy_request_bls)
-        .await
-        .wrap_err("Failed to request proxy BLS signature from signer service")?;
+	// Make the actual API call to the signer service
+	let proxy_response_bls = signer_client
+		.request_proxy_signature_bls(proxy_request_bls)
+		.await
+		.wrap_err("Failed to request proxy BLS signature from signer service")?;
 
-    match verify_proposer_commitment_signature_bls_for_message(
-        chain,
-        &bls_public_key,
-        &message_hash,
-        &proxy_response_bls.signature,
-        module_signing_id,
-        proxy_response_bls.nonce,
-    ) {
-        true => debug!("Signature verified successfully"),
-        false => error!("Signature verification failed"),
-    };
+	match verify_proposer_commitment_signature_bls_for_message(
+		chain,
+		&bls_public_key,
+		&message_hash,
+		&proxy_response_bls.signature,
+		module_signing_id,
+		proxy_response_bls.nonce,
+	) {
+		true => debug!("Signature verified successfully"),
+		false => error!("Signature verification failed"),
+	};
 
-    Ok(proxy_response_bls)
+	Ok(proxy_response_bls)
 }
 
 /// Calls the BLS signer to sign a hash using the consensus key (not proxy)
 pub async fn call_bls_signer(
-    signer_client: &mut SignerClient,
-    message_hash: B256,
-    bls_public_key: AlloyBlsPublicKey,
-    module_signing_id: &B256,
-    chain: Chain,
+	signer_client: &mut SignerClient,
+	message_hash: B256,
+	bls_public_key: AlloyBlsPublicKey,
+	module_signing_id: &B256,
+	chain: Chain,
 ) -> Result<BlsSignResponse> {
-    debug!(
-        "Calling BLS signer for message hash: {:?} with consensus key",
-        message_hash
-    );
+	debug!("Calling BLS signer for message hash: {:?} with consensus key", message_hash);
 
-    // Convert the AlloyBlsPublicKey to a commit-boost BlsPublicKey
-    let bls_public_key = BlsPublicKey::deserialize(&bls_public_key.to_vec())
-        .map_err(|e| eyre!("Failed to deserialize BLS public key: {:?}", e))?;
+	// Convert the AlloyBlsPublicKey to a commit-boost BlsPublicKey
+	let bls_public_key = BlsPublicKey::deserialize(&bls_public_key.to_vec())
+		.map_err(|e| eyre!("Failed to deserialize BLS public key: {:?}", e))?;
 
-    // Build the consensus signature request
-    let consensus_request =
-        SignConsensusRequest::builder(bls_public_key.clone()).with_root(message_hash);
+	// Build the consensus signature request
+	let consensus_request = SignConsensusRequest::builder(bls_public_key.clone()).with_root(message_hash);
 
-    // Make the actual API call to the signer service using consensus signature
-    let bls_response = signer_client
-        .request_consensus_signature(consensus_request)
-        .await
-        .wrap_err("Failed to request consensus BLS signature from signer service")?;
+	// Make the actual API call to the signer service using consensus signature
+	let bls_response = signer_client
+		.request_consensus_signature(consensus_request)
+		.await
+		.wrap_err("Failed to request consensus BLS signature from signer service")?;
 
-    match verify_proposer_commitment_signature_bls_for_message(
-        chain,
-        &bls_public_key,
-        &message_hash,
-        &bls_response.signature,
-        module_signing_id,
-        bls_response.nonce,
-    ) {
-        true => debug!("Consensus signature verified successfully"),
-        false => error!("Consensus signature verification failed"),
-    };
+	match verify_proposer_commitment_signature_bls_for_message(
+		chain,
+		&bls_public_key,
+		&message_hash,
+		&bls_response.signature,
+		module_signing_id,
+		bls_response.nonce,
+	) {
+		true => debug!("Consensus signature verified successfully"),
+		false => error!("Consensus signature verification failed"),
+	};
 
-    Ok(bls_response)
+	Ok(bls_response)
 }
 
 /// Generates a proxy key using the signer client
 pub async fn generate_proxy_key_ecdsa(
-    signer_client: &mut SignerClient,
-    bls_public_key: AlloyBlsPublicKey,
+	signer_client: &mut SignerClient,
+	bls_public_key: AlloyBlsPublicKey,
 ) -> Result<Address> {
-    debug!(
-        "Generating ECDSA proxy key for BLS public key: {:?}",
-        bls_public_key
-    );
-    // Convert the AlloyBlsPublicKey to a commit-boost BlsPublicKey
-    let bls_public_key = BlsPublicKey::deserialize(&bls_public_key.to_vec())
-        .map_err(|e| eyre!("Failed to deserialize BLS public key: {:?}", e))?;
+	debug!("Generating ECDSA proxy key for BLS public key: {:?}", bls_public_key);
+	// Convert the AlloyBlsPublicKey to a commit-boost BlsPublicKey
+	let bls_public_key = BlsPublicKey::deserialize(&bls_public_key.to_vec())
+		.map_err(|e| eyre!("Failed to deserialize BLS public key: {:?}", e))?;
 
-    let signed_delegation = signer_client
-        .generate_proxy_key_ecdsa(bls_public_key)
-        .await
-        .wrap_err("Failed to generate ECDSA proxy key")?;
+	let signed_delegation =
+		signer_client.generate_proxy_key_ecdsa(bls_public_key).await.wrap_err("Failed to generate ECDSA proxy key")?;
 
-    let proxy_address = signed_delegation.message.proxy;
-    info!("Generated ECDSA proxy key: {:?}", proxy_address);
-    Ok(proxy_address)
+	let proxy_address = signed_delegation.message.proxy;
+	info!("Generated ECDSA proxy key: {:?}", proxy_address);
+	Ok(proxy_address)
 }
 
 /// Generates a BLS proxy key using the signer client
 pub async fn generate_proxy_key_bls(
-    signer_client: &mut SignerClient,
-    bls_public_key: AlloyBlsPublicKey,
+	signer_client: &mut SignerClient,
+	bls_public_key: AlloyBlsPublicKey,
 ) -> Result<BlsPublicKey> {
-    debug!(
-        "Generating BLS proxy key for BLS public key: {:?}",
-        bls_public_key
-    );
+	debug!("Generating BLS proxy key for BLS public key: {:?}", bls_public_key);
 
-    // Convert the AlloyBlsPublicKey to a commit-boost BlsPublicKey
-    let bls_public_key = BlsPublicKey::deserialize(&bls_public_key.to_vec())
-        .map_err(|e| eyre!("Failed to deserialize BLS public key: {:?}", e))?;
+	// Convert the AlloyBlsPublicKey to a commit-boost BlsPublicKey
+	let bls_public_key = BlsPublicKey::deserialize(&bls_public_key.to_vec())
+		.map_err(|e| eyre!("Failed to deserialize BLS public key: {:?}", e))?;
 
-    let signed_delegation = signer_client
-        .generate_proxy_key_bls(bls_public_key)
-        .await
-        .wrap_err("Failed to generate BLS proxy key")?;
+	let signed_delegation =
+		signer_client.generate_proxy_key_bls(bls_public_key).await.wrap_err("Failed to generate BLS proxy key")?;
 
-    let proxy_key = signed_delegation.message.proxy;
-    info!("Generated BLS proxy key: {:?}", proxy_key);
-    Ok(proxy_key)
+	let proxy_key = signed_delegation.message.proxy;
+	info!("Generated BLS proxy key: {:?}", proxy_key);
+	Ok(proxy_key)
 }
 
 /// Wrapper around the BLS signature verification function in Commit-Boost
 pub fn verify_bls(
-    chain: Chain,
-    bls_public_key: &AlloyBlsPublicKey,
-    message_hash: &B256,
-    signature: &AlloyBlsSignature,
-    module_signing_id: &B256,
-    nonce: u64,
+	chain: Chain,
+	bls_public_key: &AlloyBlsPublicKey,
+	message_hash: &B256,
+	signature: &AlloyBlsSignature,
+	module_signing_id: &B256,
+	nonce: u64,
 ) -> Result<()> {
-    // Convert the AlloyBlsPublicKey to a commit-boost BlsPublicKey
-    let bls_public_key = BlsPublicKey::deserialize(&bls_public_key.to_vec())
-        .map_err(|e| eyre!("Failed to deserialize BLS public key: {:?}", e))?;
+	// Convert the AlloyBlsPublicKey to a commit-boost BlsPublicKey
+	let bls_public_key = BlsPublicKey::deserialize(&bls_public_key.to_vec())
+		.map_err(|e| eyre!("Failed to deserialize BLS public key: {:?}", e))?;
 
-    // Convert the AlloyBlsSignature to a commit-boost BlsSignature
-    let signature = BlsSignature::deserialize(&signature.to_vec())
-        .map_err(|e| eyre!("Failed to deserialize BLS signature: {:?}", e))?;
+	// Convert the AlloyBlsSignature to a commit-boost BlsSignature
+	let signature = BlsSignature::deserialize(&signature.to_vec())
+		.map_err(|e| eyre!("Failed to deserialize BLS signature: {:?}", e))?;
 
-    match verify_proposer_commitment_signature_bls_for_message(
-        chain,
-        &bls_public_key,
-        message_hash,
-        &signature,
-        module_signing_id,
-        nonce,
-    ) {
-        true => Ok(()),
-        false => Err(eyre!("BLS signature verification failed")),
-    }
+	match verify_proposer_commitment_signature_bls_for_message(
+		chain,
+		&bls_public_key,
+		message_hash,
+		&signature,
+		module_signing_id,
+		nonce,
+	) {
+		true => Ok(()),
+		false => Err(eyre!("BLS signature verification failed")),
+	}
 }
 
 /// Wrapper around the ECDSA signature verification function in Commit-Boost
 pub fn verify_ecdsa(
-    chain: Chain,
-    ecdsa_public_key: &Address,
-    message_hash: &B256,
-    signature: &EcdsaSignature,
-    module_signing_id: &B256,
-    nonce: u64,
+	chain: Chain,
+	ecdsa_public_key: &Address,
+	message_hash: &B256,
+	signature: &EcdsaSignature,
+	module_signing_id: &B256,
+	nonce: u64,
 ) -> Result<()> {
-    Ok(verify_proposer_commitment_signature_ecdsa_for_message(
-        chain,
-        ecdsa_public_key,
-        message_hash,
-        signature,
-        module_signing_id,
-        nonce,
-    )
-    .context("Failed to verify ECDSA signature")?)
+	Ok(verify_proposer_commitment_signature_ecdsa_for_message(
+		chain,
+		ecdsa_public_key,
+		message_hash,
+		signature,
+		module_signing_id,
+		nonce,
+	)
+	.context("Failed to verify ECDSA signature")?)
 }

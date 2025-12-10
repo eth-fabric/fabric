@@ -3008,6 +3008,7 @@ dependencies = [
  "fabric-urc",
  "indexmap 2.12.1",
  "rand 0.8.5",
+ "reqwest",
  "serde",
  "serde_json",
  "tokio",
@@ -3015,7 +3016,6 @@ dependencies = [
  "toml_edit 0.23.9",
  "tracing",
  "tracing-subscriber",
- "url",
 ]
 
 [[package]]
@@ -3029,6 +3029,7 @@ dependencies = [
  "jsonrpsee",
  "lazy_static",
  "prometheus",
+ "reqwest",
  "serde",
  "serde_json",
  "tokio",

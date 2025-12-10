@@ -9,34 +9,34 @@ use alloy::rpc::types::beacon::{BlsPublicKey, BlsSignature};
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[allow(dead_code)]
 enum MessageType {
-    Reserved = 0,
-    Registration = 1,
-    Delegation = 2,
-    Commitment = 3,
-    Constraints = 4,
+	Reserved = 0,
+	Registration = 1,
+	Delegation = 2,
+	Commitment = 3,
+	Constraints = 4,
 }
 
 impl MessageType {
-    pub fn to_uint256(self) -> U256 {
-        U256::from(self as u64)
-    }
+	pub fn to_uint256(self) -> U256 {
+		U256::from(self as u64)
+	}
 }
 
 /// URC registration message
 pub struct Registration {
-    pub owner: Address,
+	pub owner: Address,
 }
 
 /// Signed registration used for URC.register
 pub struct SignedRegistration {
-    pub pubkey: BlsPublicKey,
-    pub signature: BlsSignature,
-    pub nonce: u64,
+	pub pubkey: BlsPublicKey,
+	pub signature: BlsSignature,
+	pub nonce: u64,
 }
 
 /// Container for URC register() call parameters
 pub struct URCRegisterInputs {
-    pub registrations: Vec<SignedRegistration>,
-    pub owner: Address,
-    pub signing_id: B256,
+	pub registrations: Vec<SignedRegistration>,
+	pub owner: Address,
+	pub signing_id: B256,
 }

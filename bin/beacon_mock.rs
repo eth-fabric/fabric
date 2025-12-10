@@ -7,22 +7,19 @@ use tracing::info;
 
 /// Handler for proposer duties endpoint
 async fn get_proposer_duties_handler(
-    Path(epoch): Path<u64>,
-    axum::extract::State(proposer_key): axum::extract::State<String>,
+	Path(epoch): Path<u64>,
+	axum::extract::State(proposer_key): axum::extract::State<String>,
 ) -> Json<ProposerDutiesResponse> {
-    // Calculate slot range for epoch (32 slots per epoch)
-    let start_slot = epoch_to_first_slot(epoch);
-    let end_slot = epoch_to_last_slot(epoch);
+	// Calculate slot range for epoch (32 slots per epoch)
+	let start_slot = epoch_to_first_slot(epoch);
+	let end_slot = epoch_to_last_slot(epoch);
 
-    info!(
-        "Getting proposer duties for epoch {} from slot {} to slot {}",
-        epoch, start_slot, end_slot
-    );
+	info!("Getting proposer duties for epoch {} from slot {} to slot {}", epoch, start_slot, end_slot);
 
-    // Generate alternating duties
-    // Even slots: use provided proposer key
-    // Odd slots: use default random key
-    let duties: Vec<ValidatorDuty> = (start_slot..=end_slot)
+	// Generate alternating duties
+	// Even slots: use provided proposer key
+	// Odd slots: use default random key
+	let duties: Vec<ValidatorDuty> = (start_slot..=end_slot)
 		.map(|slot| {
 			let is_even = slot % 2 == 0;
 			let pubkey = if is_even {
@@ -37,49 +34,44 @@ async fn get_proposer_duties_handler(
 		})
 		.collect();
 
-    Json(ProposerDutiesResponse {
-        execution_optimistic: false,
-        finalized: true,
-        data: duties,
-    })
+	Json(ProposerDutiesResponse { execution_optimistic: false, finalized: true, data: duties })
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Read env vars
-    let log_level = std::env::var("RUST_LOG").unwrap_or("info".to_string());
-    let host = std::env::var("BEACON_HOST").expect("BEACON_HOST environment variable not set");
-    let port = std::env::var("BEACON_PORT").expect("BEACON_PORT environment variable not set");
-    let proposer_key =
-        std::env::var("PROPOSER_KEY").expect("PROPOSER_KEY environment variable not set");
-    common::logging::setup_logging(&log_level)?;
+	// Read env vars
+	let log_level = std::env::var("RUST_LOG").unwrap_or("info".to_string());
+	let host = std::env::var("BEACON_HOST").expect("BEACON_HOST environment variable not set");
+	let port = std::env::var("BEACON_PORT").expect("BEACON_PORT environment variable not set");
+	let proposer_key = std::env::var("PROPOSER_KEY").expect("PROPOSER_KEY environment variable not set");
+	common::logging::setup_logging(&log_level)?;
 
-    let bind_addr = format!("{}:{}", host, port);
+	let bind_addr = format!("{}:{}", host, port);
 
-    info!("Mock Beacon Node Server");
-    info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    info!("Listening on: {}", bind_addr);
-    info!("Proposer key: {}", proposer_key);
-    info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    info!("Endpoint: GET /eth/v1/validator/duties/proposer/{{epoch}}");
-    info!("Pattern: Even slots = proposer key, Odd slots = random key 0x87d322...");
+	info!("Mock Beacon Node Server");
+	info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+	info!("Listening on: {}", bind_addr);
+	info!("Proposer key: {}", proposer_key);
+	info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+	info!("Endpoint: GET /eth/v1/validator/duties/proposer/{{epoch}}");
+	info!("Pattern: Even slots = proposer key, Odd slots = random key 0x87d322...");
 
-    // Build router with proposer key as shared state
-    let app = Router::new()
-        .route(
-            format!("/{}/{{epoch}}", PROPOSER_DUTIES_ROUTE).as_str(),
-            // PROPOSER_DUTIES_ROUTE,
-            get(get_proposer_duties_handler),
-        )
-        .with_state(proposer_key);
+	// Build router with proposer key as shared state
+	let app = Router::new()
+		.route(
+			format!("/{}/{{epoch}}", PROPOSER_DUTIES_ROUTE).as_str(),
+			// PROPOSER_DUTIES_ROUTE,
+			get(get_proposer_duties_handler),
+		)
+		.with_state(proposer_key);
 
-    // Bind to the specified address
-    let listener = tokio::net::TcpListener::bind(&bind_addr).await?;
+	// Bind to the specified address
+	let listener = tokio::net::TcpListener::bind(&bind_addr).await?;
 
-    info!("Mock Beacon Node server ready");
+	info!("Mock Beacon Node server ready");
 
-    // Start server
-    axum::serve(listener, app).await?;
+	// Start server
+	axum::serve(listener, app).await?;
 
-    Ok(())
+	Ok(())
 }

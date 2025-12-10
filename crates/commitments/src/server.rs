@@ -1,8 +1,7 @@
-use std::net::SocketAddr;
-
 use axum::{Router, routing::get};
 use eyre::Result;
 use jsonrpsee::server::{RpcModule, Server};
+use reqwest::Url;
 
 use super::metrics::server_metrics_handler;
 use crate::rpc::CommitmentsRpcServer;
@@ -12,39 +11,46 @@ use crate::rpc::CommitmentsRpcServer;
 /// Every implementation that wants to use `run_commitments_rpc_server` must
 /// provide these two methods.
 pub trait CommitmentsServerInfo {
-    fn server_addr(&self) -> SocketAddr;
-    fn metrics_addr(&self) -> SocketAddr;
+	fn server_url(&self) -> Url;
+	fn metrics_url(&self) -> Url;
 }
 
 pub async fn run_commitments_rpc_server<H>(handlers: H) -> Result<()>
 where
-    H: CommitmentsRpcServer + CommitmentsServerInfo + Clone + Send + Sync + 'static,
+	H: CommitmentsRpcServer + CommitmentsServerInfo + Clone + Send + Sync + 'static,
 {
-    // Get addresses from the handler
-    let server_addr: SocketAddr = handlers.server_addr();
-    let metrics_addr: SocketAddr = handlers.metrics_addr();
+	// Get urls from the handler
+	let server_url: Url = handlers.server_url();
+	let metrics_url: Url = handlers.metrics_url();
 
-    let server = Server::builder().build(server_addr).await?;
-    let module: RpcModule<_> = handlers.into_rpc();
+	// Get socket addresses
+	let server_socket = server_url.socket_addrs(|| None)?;
+	let server_socket = server_socket.first().ok_or(eyre::eyre!("Failed to get first socket address"))?;
 
-    let addr = server.local_addr()?;
-    tracing::info!("Starting Commitments RPC server on {}", addr);
+	let metrics_socket = metrics_url.socket_addrs(|| None)?;
+	let metrics_socket = *metrics_socket.first().ok_or(eyre::eyre!("Failed to get first socket address"))?;
 
-    // Spawn metrics server
-    tokio::spawn(async move {
-        let app = Router::new().route("/metrics", get(server_metrics_handler));
-        match tokio::net::TcpListener::bind(metrics_addr).await {
-            Ok(listener) => {
-                if let Err(e) = axum::serve(listener, app).await {
-                    tracing::error!("metrics server error: {}", e);
-                }
-            }
-            Err(e) => tracing::error!("failed to bind metrics listener: {}", e),
-        }
-    });
+	let server = Server::builder().build(server_socket).await?;
+	let module: RpcModule<_> = handlers.into_rpc();
 
-    let handle = server.start(module);
-    handle.stopped().await;
+	let addr = server.local_addr()?;
+	tracing::info!("Starting Commitments RPC server on {}", addr);
 
-    Ok(())
+	// Spawn metrics server
+	tokio::spawn(async move {
+		let app = Router::new().route("/metrics", get(server_metrics_handler));
+		match tokio::net::TcpListener::bind(metrics_socket).await {
+			Ok(listener) => {
+				if let Err(e) = axum::serve(listener, app).await {
+					tracing::error!("metrics server error: {}", e);
+				}
+			}
+			Err(e) => tracing::error!("failed to bind metrics listener: {}", e),
+		}
+	});
+
+	let handle = server.start(module);
+	handle.stopped().await;
+
+	Ok(())
 }

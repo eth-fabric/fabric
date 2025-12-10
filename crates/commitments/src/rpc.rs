@@ -20,19 +20,19 @@ use crate::types::{CommitmentRequest, FeeInfo, SignedCommitment, SlotInfoRespons
 /// jsonrpsee auto-generates a CommitmentsRpcServer when into_rpc() is called on this trait.
 #[rpc(server, client)]
 pub trait CommitmentsRpc {
-    /// Request a commitment.
-    #[method(name = "commitmentRequest")]
-    async fn commitment_request(&self, request: CommitmentRequest) -> RpcResult<SignedCommitment>;
+	/// Request a commitment.
+	#[method(name = "commitmentRequest")]
+	async fn commitment_request(&self, request: CommitmentRequest) -> RpcResult<SignedCommitment>;
 
-    /// Query a previously created commitment result.
-    #[method(name = "commitmentResult")]
-    async fn commitment_result(&self, request_hash: B256) -> RpcResult<SignedCommitment>;
+	/// Query a previously created commitment result.
+	#[method(name = "commitmentResult")]
+	async fn commitment_result(&self, request_hash: B256) -> RpcResult<SignedCommitment>;
 
-    /// Query slots information.
-    #[method(name = "slots")]
-    async fn slots(&self) -> RpcResult<SlotInfoResponse>;
+	/// Query slots information.
+	#[method(name = "slots")]
+	async fn slots(&self) -> RpcResult<SlotInfoResponse>;
 
-    /// Query current fee information.
-    #[method(name = "fee")]
-    async fn fee(&self, request: CommitmentRequest) -> RpcResult<FeeInfo>;
+	/// Query current fee information.
+	#[method(name = "fee")]
+	async fn fee(&self, request: CommitmentRequest) -> RpcResult<FeeInfo>;
 }
