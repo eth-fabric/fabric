@@ -202,9 +202,13 @@ async fn run_continuous(config: &SpammerConfig, signer: &PrivateKeySigner) -> Re
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Get config file path from args or use default
+    // Read env vars
+    let log_level = std::env::var("RUST_LOG").unwrap_or("info".to_string());
     let config_path =
         std::env::var("CONFIG_PATH").expect("CONFIG_PATH environment variable not set");
+
+    // Setup logging
+    common::logging::setup_logging(&log_level)?;
 
     info!("Loading configuration from: {}", config_path);
 

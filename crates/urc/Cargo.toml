@@ -11,3 +11,6 @@ constraints = { package = "fabric-constraints", path = "../constraints" }
 blst = { workspace = true }
 eyre = { workspace = true }
 commit-boost = { workspace = true }
+
+[dev-dependencies]
+common = { package = "fabric-common", path = "../common" }

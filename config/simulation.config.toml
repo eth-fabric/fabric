@@ -17,30 +17,31 @@ db_path = "/tmp/rocksdb"
 
 # Key paths
 gateway_default_bls_key = "0xb3a22e4a673ac7a153ab5b3c17a4dbef55f7e47210b20c0cbb0e66df5b36bb49ef808577610b034172e955d2312a61b9"
+proposer_consensus_key = "0x883827193f7627cd04e621e1e8d56498362a52b2a30c9a1c72036eb935c4278dee23d38a24d2f7dda62689886f0c39f4"
 proxy_key_dir = "/tmp/proxy"
 keys_path = "./data/keystores/keys"
 secrets_path = "./data/keystores/secrets"
 
 # --- Service URLs ----
 # Signer
-signer_host = "http://127.0.0.1"
+signer_host = "127.0.0.1"
 signer_port = 20000
 
 # Beacon mock
-beacon_mock_host = "http://localhost"
+beacon_mock_host = "127.0.0.1"
 beacon_mock_port = 5052
 
-execution_client_host = "http://localhost"
+execution_client_host = "127.0.0.1"
 execution_client_port = 8545
 
 # Gateway
-gateway_host = "http://localhost"
+gateway_host = "127.0.0.1"
 gateway_port = 8080
-gateway_metrics_host = "http://localhost"
+gateway_metrics_host = "127.0.0.1"
 gateway_metrics_port = 8002
 
 # Relay
-relay_host = "http://localhost"
+relay_host = "127.0.0.1"
 relay_port = 9999
 
 # Gateway specific

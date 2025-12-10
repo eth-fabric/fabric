@@ -1,22 +1,8 @@
 use axum::{Json, Router, extract::Path, routing::get};
-use clap::Parser;
 use eyre::Result;
 use lookahead::types::{ProposerDutiesResponse, ValidatorDuty};
 use lookahead::utils::{epoch_to_first_slot, epoch_to_last_slot};
 use tracing::info;
-
-/// Mock beacon node that returns alternating proposer duties
-#[derive(Parser, Debug)]
-#[command(name = "beacon-mock")]
-#[command(about = "Mock beacon node for testing")]
-struct Args {
-    /// Beacon API URL to bind to (e.g., http://localhost:5052)
-    #[arg(long, default_value = "http://0.0.0.0:5052")]
-    url: String,
-
-    /// Proposer BLS public key (hex format with 0x prefix)
-    proposer_bls_key: String,
-}
 
 /// Handler for proposer duties endpoint
 async fn get_proposer_duties_handler(
@@ -59,27 +45,23 @@ async fn get_proposer_duties_handler(
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    common::logging::setup_logging("info".into())?;
-    // Parse command line arguments
-    let args = Args::parse();
+    // Read env vars
+    let log_level = std::env::var("RUST_LOG").unwrap_or("info".to_string());
+    let host = std::env::var("BEACON_HOST").expect("BEACON_HOST environment variable not set");
+    let port = std::env::var("BEACON_PORT").expect("BEACON_PORT environment variable not set");
+    let proposer_key =
+        std::env::var("PROPOSER_KEY").expect("PROPOSER_KEY environment variable not set");
+    common::logging::setup_logging(&log_level)?;
 
-    // Parse the URL to extract host and port
-    let url = args
-        .url
-        .parse::<url::Url>()
-        .map_err(|e| eyre::eyre!("Invalid URL '{}': {}", args.url, e))?;
-
-    let host = url.host_str().unwrap_or("0.0.0.0");
-    let port = url.port().unwrap_or(5052);
     let bind_addr = format!("{}:{}", host, port);
 
     info!("Mock Beacon Node Server");
     info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     info!("Listening on: {}", bind_addr);
-    info!("Proposer key: {}", args.proposer_bls_key);
+    info!("Proposer key: {}", proposer_key);
     info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     info!("Endpoint: GET /eth/v1/validator/duties/proposer/{{epoch}}");
-    info!("Pattern: Even slots = proposer key, Odd slots = zero key");
+    info!("Pattern: Even slots = proposer key, Odd slots = random key 0x87d322...");
 
     // Build router with proposer key as shared state
     let app = Router::new()
@@ -87,7 +69,7 @@ async fn main() -> Result<()> {
             "/eth/v1/validator/duties/proposer/{epoch}",
             get(get_proposer_duties_handler),
         )
-        .with_state(args.proposer_bls_key);
+        .with_state(proposer_key);
 
     // Bind to the specified address
     let listener = tokio::net::TcpListener::bind(&bind_addr).await?;

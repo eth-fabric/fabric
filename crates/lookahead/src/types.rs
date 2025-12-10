@@ -1,4 +1,5 @@
 use alloy::rpc::types::beacon::BlsPublicKey;
+use common::utils::decode_pubkey;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 
@@ -29,11 +30,7 @@ pub struct ValidatorDuty {
 /// Helper functions for beacon chain operations
 impl ValidatorDuty {
     pub fn parse_pubkey(&self) -> Result<BlsPublicKey> {
-        let pubkey_str = self.pubkey.strip_prefix("0x").unwrap_or(&self.pubkey);
-        let bytes = hex::decode(pubkey_str)?;
-        Ok(BlsPublicKey::new(bytes.try_into().map_err(|e| {
-            eyre::eyre!("Failed to convert bytes to BLS public key: {:?}", e)
-        })?))
+        decode_pubkey(self.pubkey.as_str())
     }
 
     pub fn parse_slot(&self) -> Result<u64> {

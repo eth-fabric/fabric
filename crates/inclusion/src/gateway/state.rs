@@ -1,6 +1,7 @@
 use std::net::{IpAddr, SocketAddr};
 
 use alloy::{
+    hex,
     network::Ethereum,
     primitives::B256,
     providers::{DynProvider, Provider, ProviderBuilder},
@@ -9,7 +10,7 @@ use alloy::{
 };
 use commit_boost::prelude::{Chain, StartCommitModuleConfig, commit::client::SignerClient};
 
-use common::storage::DatabaseContext;
+use common::{storage::DatabaseContext, utils::decode_pubkey};
 use constraints::client::HttpConstraintsClient;
 
 use crate::gateway::config::GatewayConfig;
@@ -53,10 +54,11 @@ impl GatewayState {
             config.extra.relay_port,
             config.extra.relay_api_key.clone(),
         );
-        let rpc_addr = constraints_client
-            .base_url
+
+        let rpc_addr = format!("{}:{}", config.extra.rpc_host, config.extra.rpc_port)
             .parse::<SocketAddr>()
             .expect("Failed to parse RPC address");
+
         let metrics_addr = format!(
             "{}:{}",
             config.extra.metrics_host, config.extra.metrics_port
@@ -65,14 +67,15 @@ impl GatewayState {
         .expect("Failed to parse metrics address");
 
         // Create execution client
-        let execution_client_url = Url::parse(
-            format!(
-                "{}:{}",
-                config.extra.execution_client_host, config.extra.execution_client_port
-            )
-            .as_str(),
+        let execution_client_addr = format!(
+            "{}:{}",
+            config.extra.execution_client_host, config.extra.execution_client_port
         )
-        .expect("Failed to parse execution client URL from config");
+        .parse::<SocketAddr>()
+        .expect("Failed to parse execution client address");
+        let execution_client_url =
+            Url::parse(format!("http://{}", execution_client_addr.to_string()).as_str())
+                .expect("Failed to parse execution client URL from config");
         let execution_client = ProviderBuilder::new()
             .network::<Ethereum>()
             .connect_http(execution_client_url)
@@ -81,31 +84,23 @@ impl GatewayState {
         // Parse config fields into their respective types
         let signer_client = config.signer_client.clone();
 
-        let gateway_public_key = BlsPublicKey::new(
-            config
-                .extra
-                .gateway_public_key
-                .as_bytes()
-                .try_into()
-                .expect("Failed to convert gateway public key to bytes"),
-        );
+        let gateway_public_key = decode_pubkey(config.extra.gateway_public_key.as_str())
+            .expect("Failed to decode gateway public key");
 
         let constraints_receivers = config
             .extra
             .constraints_receivers
             .iter()
             .map(|receiver| {
-                BlsPublicKey::new(
-                    receiver
-                        .as_bytes()
-                        .try_into()
-                        .expect("Failed to convert constraints receiver to bytes"),
-                )
+                decode_pubkey(receiver.as_str()).expect("Failed to decode constraints receiver")
             })
             .collect::<Vec<_>>();
 
         let chain = config.chain;
-        let module_signing_id = B256::from_slice(config.extra.module_signing_id.as_bytes());
+        let module_signing_id = B256::from_slice(
+            &hex::decode(config.extra.module_signing_id.as_str())
+                .expect("Failed to decode module signing id"),
+        );
         let delegation_check_interval_seconds = config.extra.delegation_check_interval_seconds;
         Self {
             db,

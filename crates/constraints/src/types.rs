@@ -4,6 +4,7 @@ use alloy::rlp::Decodable;
 use alloy::rpc::types::beacon::relay::SubmitBlockRequest as AlloySubmitBlockRequest;
 use alloy::rpc::types::beacon::{BlsPublicKey, BlsSignature};
 use axum::http::HeaderMap;
+use common::utils::decode_pubkey;
 use eyre::{Result, eyre};
 use serde::{Deserialize, Serialize};
 
@@ -158,14 +159,7 @@ impl AuthorizationContext {
             .to_str()
             .map_err(|_| eyre!("Invalid X-Receiver-PublicKey header"))?;
 
-        let public_key = BlsPublicKey::new(
-            public_key_str
-                .strip_prefix("0x")
-                .unwrap_or(public_key_str)
-                .as_bytes()
-                .try_into()
-                .map_err(|e| eyre!("Invalid BLS public key: {:?}", e))?,
-        );
+        let public_key = decode_pubkey(public_key_str)?;
 
         // Parse BLS signature
         let signature_str = signature_header

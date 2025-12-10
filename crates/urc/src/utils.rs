@@ -240,13 +240,12 @@ pub fn abi_encode_urc_register_inputs(inputs: &URCRegisterInputs) -> Result<Byte
 mod tests {
     use super::*;
     use alloy::primitives::{Address, U256, hex};
+    use common::utils::decode_pubkey;
     use constraints::types::Constraint;
     use eyre::Result;
 
     fn bls_pubkey_from_hex(hex_str: &str) -> BlsPublicKey {
-        let hex_str = hex_str.strip_prefix("0x").unwrap_or(hex_str);
-        let bytes = hex::decode(hex_str).unwrap();
-        BlsPublicKey::new(bytes.try_into().unwrap())
+        decode_pubkey(hex_str).expect("Failed to decode public key")
     }
 
     #[test]

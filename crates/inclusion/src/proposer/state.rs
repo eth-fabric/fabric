@@ -1,10 +1,12 @@
 use std::net::IpAddr;
 
+use alloy::hex;
 use alloy::primitives::{Address, B256};
 use alloy::rpc::types::beacon::BlsPublicKey;
 use commit_boost::prelude::{Chain, StartCommitModuleConfig, commit::client::SignerClient};
 
 use common::storage::DatabaseContext;
+use common::utils::{decode_address, decode_pubkey};
 use constraints::client::HttpConstraintsClient;
 use lookahead::{
     beacon_client::{BeaconApiClient, ReqwestClient},
@@ -63,19 +65,16 @@ impl ProposerState {
 
         let signer_client = config.signer_client.clone();
 
-        let gateway_public_key = BlsPublicKey::new(
-            config
-                .extra
-                .gateway_public_key
-                .as_bytes()
-                .try_into()
-                .expect("Failed to convert gateway public key to bytes"),
-        );
-        let gateway_address = Address::try_from(config.extra.gateway_address.as_bytes())
-            .expect("Failed to convert gateway address to address");
+        let gateway_public_key = decode_pubkey(config.extra.gateway_public_key.as_str())
+            .expect("Failed to decode gateway public key");
+        let gateway_address = decode_address(config.extra.gateway_address.as_str())
+            .expect("Failed to decode gateway address");
 
         let chain = config.chain;
-        let module_signing_id = B256::from_slice(config.extra.module_signing_id.as_bytes());
+        let module_signing_id = B256::from_slice(
+            &hex::decode(config.extra.module_signing_id.as_str())
+                .expect("Failed to decode module signing id"),
+        );
         let lookahead_check_interval_seconds = config.extra.lookahead_check_interval_seconds;
         Self {
             db,
