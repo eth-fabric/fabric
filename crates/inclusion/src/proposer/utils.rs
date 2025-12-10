@@ -28,7 +28,7 @@ pub async fn create_signed_delegation(
     let signing_root = get_delegation_signing_root(&delegation)?;
 
     // Sign using the signer client
-    let response = signer::call_proxy_bls_signer(
+    let response = signer::call_bls_signer(
         signer_client,
         signing_root,
         proposer_public_key.clone(),
