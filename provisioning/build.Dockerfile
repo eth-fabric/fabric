@@ -55,5 +55,3 @@ RUN set -eux; if [ -f /tmp/env.sh ]; then . /tmp/env.sh; fi; \
 FROM scratch AS output
 ARG BINARY_NAME
 COPY --from=builder /artifacts/${BINARY_NAME} /${BINARY_NAME}
-
-

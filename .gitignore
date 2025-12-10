@@ -1,3 +1,5 @@
 /target
 config/simulation
+config/docker
 data/proxy
+data/rocksdb

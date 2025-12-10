@@ -1,0 +1,66 @@
+# Docker Simulation Setup Configuration
+# This file contains configuration settings for the simulation-setup binary
+
+# Chain name
+chain = "Hoodi"
+
+# Module names
+gateway_module_name = "gateway-module"
+proposer_module_name = "proposer-module"
+
+# Module signing IDs
+gateway_module_signing_id = "0x1111111111111111111111111111111111111111111111111111111111111111"
+proposer_module_signing_id = "0x2222222222222222222222222222222222222222222222222222222222222222"
+
+# Database root
+db_path = "./data/rocksdb"
+
+# Key paths
+gateway_default_bls_key = "0xb3a22e4a673ac7a153ab5b3c17a4dbef55f7e47210b20c0cbb0e66df5b36bb49ef808577610b034172e955d2312a61b9"
+proposer_consensus_key = "0x883827193f7627cd04e621e1e8d56498362a52b2a30c9a1c72036eb935c4278dee23d38a24d2f7dda62689886f0c39f4"
+proxy_key_dir = "./data/proxy"
+keys_path = "./data/keystores/keys"
+secrets_path = "./data/keystores/secrets"
+
+# --- Service URLs ----
+# Signer
+signer_host = "0.0.0.0"
+signer_port = 20000
+
+# Beacon mock
+beacon_mock_host = "0.0.0.0"
+beacon_mock_port = 5052
+
+execution_client_host = "0.0.0.0"
+execution_client_port = 8545
+
+# Gateway
+gateway_host = "0.0.0.0"
+gateway_port = 8080
+gateway_metrics_host = "0.0.0.0"
+gateway_metrics_port = 8002
+
+# Relay
+relay_host = "0.0.0.0"
+relay_port = 9999
+
+# Gateway specific
+constraints_receivers = ["0x883827193f7627cd04e621e1e8d56498362a52b2a30c9a1c72036eb935c4278dee23d38a24d2f7dda62689886f0c39f4"]
+delegation_check_interval_seconds = 6
+
+# Proposer specific
+lookahead_check_interval_seconds = 12
+
+# Relay specific
+lookahead_update_interval = 30
+downstream_relay_host = "0.0.0.0"
+downstream_relay_port = 6666
+
+# Spammer specific
+spammer_mode = "continuous"
+spammer_interval_secs = 2
+spammer_private_key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+slasher_address = "0x1234567890123456789012345678901234567890"
+
+# --- Logging and metrics ----
+log_level = "info"
