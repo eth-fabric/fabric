@@ -1,0 +1,74 @@
+x-bin-base: &bin-base
+  restart: unless-stopped
+  environment:
+    - RUST_LOG=${RUST_LOG:-info}
+
+services:
+  gateway:
+    <<: *bin-base
+    image: fabric/gateway:${VERSION:-dev}
+    container_name: inclusion-gateway
+    env_file:
+      - ./config/docker/gateway.env
+    volumes:
+      - ./config/docker/gateway.toml:/config.toml:ro
+    ports:
+      - "127.0.0.1:18080:8080"
+
+  relay:
+    <<: *bin-base
+    image: fabric/relay:${VERSION:-dev}
+    container_name: inclusion-relay
+    env_file:
+      - ./config/docker/relay.env
+    volumes:
+      - ./config/docker/relay.toml:/config.toml:ro
+    ports:
+      - "127.0.0.1:8080:9999"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9999/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  proposer:
+    <<: *bin-base
+    image: fabric/proposer:${VERSION:-dev}
+    container_name: inclusion-proposer
+    env_file:
+      - ./config/docker/proposer.env
+    volumes:
+      - ./config/docker/proposer.toml:/config.toml:ro
+
+  spammer:
+    <<: *bin-base
+    image: fabric/spammer:${VERSION:-dev}
+    container_name: inclusion-spammer
+    env_file:
+      - ./config/docker/spammer.env
+    volumes:
+      - ./config/docker/spammer.toml:/config.toml:ro
+
+  signer:
+    <<: *bin-base
+    image: fabric/signer:${VERSION:-dev}
+    container_name: commit-boost-signer
+    env_file:
+      - ./config/docker/signer.env
+    volumes:
+      - ./config/docker/signer.toml:/config.toml:ro
+      - ./data/keystores/keys:/app/keys:ro
+      - ./data/keystores/secrets:/app/secrets:ro
+      - ./data/proxy:/app/proxy
+    ports:
+      - "127.0.0.1:20000:20000"
+
+  beacon-mock:
+    <<: *bin-base
+    image: fabric/beacon-mock:${VERSION:-dev}
+    container_name: beacon-mock
+      env_file:
+      - ./config/docker/beacon-mock.env
+    ports:
+      - "127.0.0.1:5052:5052"
