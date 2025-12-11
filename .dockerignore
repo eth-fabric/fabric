@@ -1,0 +1,10 @@
+target
+.git
+.gitignore
+Dockerfile
+**/node_modules
+**/dist
+tmp
+*.log
+.env
+config/simulation

@@ -40,6 +40,9 @@ RUN set -eux; \
       libssl-dev zlib1g-dev protobuf-compiler; \
     rm -rf /var/lib/apt/lists/*;
 
+COPY provisioning/protoc.sh /tmp/protoc.sh
+RUN bash /tmp/protoc.sh && rm -f /tmp/protoc.sh
+
 RUN set -eux; if [ -f /tmp/env.sh ]; then . /tmp/env.sh; fi; \
     cargo chef cook ${TARGET_FLAG:-} --release --recipe-path recipe.json
 

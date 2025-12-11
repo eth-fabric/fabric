@@ -7,68 +7,74 @@ services:
   gateway:
     <<: *bin-base
     image: fabric/gateway:${VERSION:-dev}
-    container_name: inclusion-gateway
     env_file:
       - ./config/docker/gateway.env
     volumes:
-      - ./config/docker/gateway.toml:/config.toml:ro
-    ports:
-      - "127.0.0.1:18080:8080"
+      - ./config/docker/gateway.toml:/app/config.toml:ro
+      - ./data/rocksdb:/app/data/rocksdb
+    expose:
+      - "8080"
+      - "8082"
+    depends_on:
+      - relay
 
   relay:
     <<: *bin-base
     image: fabric/relay:${VERSION:-dev}
-    container_name: inclusion-relay
     env_file:
       - ./config/docker/relay.env
     volumes:
-      - ./config/docker/relay.toml:/config.toml:ro
-    ports:
-      - "127.0.0.1:8080:9999"
+      - ./config/docker/relay.toml:/app/config.toml:ro
+      - ./data/rocksdb:/app/data/rocksdb
+    expose:
+      - "9999"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9999/health"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 5s
+    depends_on:
+      - beacon-mock
 
   proposer:
     <<: *bin-base
     image: fabric/proposer:${VERSION:-dev}
-    container_name: inclusion-proposer
     env_file:
       - ./config/docker/proposer.env
     volumes:
-      - ./config/docker/proposer.toml:/config.toml:ro
+      - ./config/docker/proposer.toml:/app/config.toml:ro
+      - ./data/rocksdb:/app/data/rocksdb
+    depends_on:
+      - signer
+      - beacon-mock
+      - relay
 
   spammer:
     <<: *bin-base
     image: fabric/spammer:${VERSION:-dev}
-    container_name: inclusion-spammer
     env_file:
       - ./config/docker/spammer.env
     volumes:
-      - ./config/docker/spammer.toml:/config.toml:ro
+      - ./config/docker/spammer.toml:/app/config.toml:ro
+    depends_on:
+      - gateway
 
   signer:
     <<: *bin-base
     image: fabric/signer:${VERSION:-dev}
-    container_name: commit-boost-signer
     env_file:
       - ./config/docker/signer.env
     volumes:
-      - ./config/docker/signer.toml:/config.toml:ro
-      - ./data/keystores/keys:/app/keys:ro
-      - ./data/keystores/secrets:/app/secrets:ro
-      - ./data/proxy:/app/proxy
-    ports:
-      - "127.0.0.1:20000:20000"
+      - ./config/docker/signer.toml:/app/config.toml:ro
+      - ./data/keystores/keys:/app/data/keystores/keys:ro
+      - ./data/keystores/secrets:/app/data/keystores/secrets:ro
+      - ./data/proxy:/app/data/proxy
 
   beacon-mock:
     <<: *bin-base
     image: fabric/beacon-mock:${VERSION:-dev}
-    container_name: beacon-mock
-      env_file:
-      - ./config/docker/beacon-mock.env
-    ports:
-      - "127.0.0.1:5052:5052"
+    env_file:
+    - ./config/docker/beacon-mock.env
+    expose:
+      - "5052"
