@@ -1,7 +1,4 @@
-use cb_common::{
-	config::StartSignerConfig,
-	utils::wait_for_signal,
-};
+use cb_common::{config::StartSignerConfig, utils::wait_for_signal};
 use cb_signer::service::SigningService;
 use eyre::Result;
 use tracing::{error, info};
