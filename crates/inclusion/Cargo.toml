@@ -3,30 +3,63 @@ name = "fabric-inclusion"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["full"]
+
+types = []
+proofs = ["eth_trie", "ethereum-types", "bincode"]
+full = [
+    "types",
+    "proofs",
+    "common",
+    "lookahead",
+    "signing",
+    "urc",
+    "async-trait",
+    "serde_json",
+    "axum",
+    "reqwest",
+    "prometheus",
+    "tracing",
+    "rocksdb",
+    "tokio",
+    "jsonrpsee",
+    "eth_trie",
+    "ethereum-types",
+    "bincode",
+    "commit-boost",
+    "lazy_static",
+]
+
 [dependencies]
-async-trait = { workspace = true }
-common = { package = "fabric-common", path = "../common" }
+# Required dependencies
+alloy = { workspace = true }
+serde = { workspace = true }
+eyre = { workspace = true }
 commitments = { package = "fabric-commitments", path = "../commitments" }
 constraints = { package = "fabric-constraints", path = "../constraints" }
-lookahead = { package = "fabric-lookahead", path = "../lookahead" }
-signing = { package = "fabric-signing", path = "../signing" }
-urc = { package = "fabric-urc", path = "../urc" }
-axum = { workspace = true }
-reqwest = { workspace = true }
-eyre = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-alloy = { workspace = true }
-commit-boost = { workspace = true }
-lazy_static = { workspace = true }
-prometheus = { workspace = true }
-tracing = { workspace = true }
-rocksdb = { workspace = true }
-tokio = { workspace = true }
-jsonrpsee = { workspace = true }
-eth_trie = { workspace = true }
-ethereum-types = { workspace = true }
-bincode = { workspace = true }
+
+# Needed for proofs
+eth_trie = { workspace = true, optional = true }
+ethereum-types = { workspace = true, optional = true }
+bincode = { workspace = true, optional = true }
+
+# Used in implementations
+common = { package = "fabric-common", path = "../common", optional = true }
+lookahead = { package = "fabric-lookahead", path = "../lookahead", optional = true }
+signing = { package = "fabric-signing", path = "../signing", optional = true }
+urc = { package = "fabric-urc", path = "../urc", optional = true }
+commit-boost = { workspace = true, optional = true }
+async-trait = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+rocksdb = { workspace = true, optional = true }
+axum = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true }
+jsonrpsee = { workspace = true, optional = true }
+lazy_static = { workspace = true, optional = true }
+prometheus = { workspace = true, optional = true }
+tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
 cb-common = { workspace = true }

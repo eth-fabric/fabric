@@ -45,7 +45,7 @@ relay_host = "127.0.0.1"
 relay_port = 9999
 
 # Gateway specific
-constraints_receivers = ["0x883827193f7627cd04e621e1e8d56498362a52b2a30c9a1c72036eb935c4278dee23d38a24d2f7dda62689886f0c39f4"]
+constraints_receivers = []
 delegation_check_interval_seconds = 6
 
 # Proposer specific

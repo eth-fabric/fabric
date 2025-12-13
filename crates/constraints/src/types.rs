@@ -34,7 +34,7 @@ pub struct SignedDelegation {
 }
 
 /// A constraints message containing multiple constraints
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ConstraintsMessage {
 	pub proposer: BlsPublicKey,
 	pub delegate: BlsPublicKey,
@@ -59,7 +59,7 @@ pub struct ConstraintCapabilities {
 }
 
 /// Proofs of constraint validity for a block
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ConstraintProofs {
 	pub constraint_types: Vec<u64>,
 	pub payloads: Vec<Bytes>,

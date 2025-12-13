@@ -1,7 +1,12 @@
 pub mod constants;
+#[cfg(feature = "full")]
 pub mod gateway;
+#[cfg(feature = "proofs")]
 pub mod proofs;
+#[cfg(feature = "full")]
 pub mod proposer;
+#[cfg(feature = "full")]
 pub mod relay;
+#[cfg(feature = "full")]
 pub mod storage;
 pub mod types;
