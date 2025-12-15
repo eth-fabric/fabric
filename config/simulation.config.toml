@@ -42,7 +42,7 @@ gateway_metrics_port = 8002
 
 # Relay
 relay_host = "127.0.0.1"
-relay_port = 9999
+relay_port = 9998
 
 # Gateway specific
 constraints_receivers = []

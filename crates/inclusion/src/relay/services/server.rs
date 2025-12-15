@@ -82,6 +82,9 @@ impl ConstraintsApi for RelayServer {
 	}
 
 	/// GET /constraints
+	/// Returns all signed constraints for a slot
+	/// If the slot has passed, returns all signed constraints for the slot without authentication
+	/// If the slot has not passed, verifies the authentication headers against the receivers list
 	async fn get_constraints(&self, slot: u64, auth: AuthorizationContext) -> Result<ConstraintsResponse> {
 		// Get current slot to check if target slot has passed
 		let current_slot = current_slot(&self.state.chain);
@@ -100,28 +103,38 @@ impl ConstraintsApi for RelayServer {
 			}
 		}
 
-		// Slot has not passed yet - enforce authentication
+		// Get signed constraints from database
+		let signed_constraints = match self.state.db.get_signed_constraints(slot)? {
+			Some(signed_constraints) => signed_constraints,
+			None => return Ok(ConstraintsResponse { constraints: vec![] }),
+		};
+
+		// Bypass authentication if the receivers list is empty
+		if signed_constraints.message.receivers.is_empty() {
+			return Ok(ConstraintsResponse { constraints: vec![signed_constraints] });
+		}
+
+		// Slot has not passed yet and receivers list is not empty -> enforce authentication
+		// All headers must be present
+		let public_key = auth.public_key.ok_or(eyre!("Missing public key from header"))?;
+		let signature = auth.signature.ok_or(eyre!("Missing signature from header"))?;
+		let signing_id = auth.signing_id.ok_or(eyre!("Missing signing id from header"))?;
+		let nonce = auth.nonce.ok_or(eyre!("Missing nonce from header"))?;
+
 		// Compute slot hash for signature verification
 		let slot_hash = keccak256(&slot.to_be_bytes());
 
 		debug!("verifying slot signature");
 		// Verify caller's signature against the slot hash using standardized commit-boost verification
-		verify_bls(self.state.chain, &auth.public_key, &slot_hash, &auth.signature, &auth.signing_id, auth.nonce)?;
+		verify_bls(self.state.chain, &public_key, &slot_hash, &signature, &signing_id, nonce)?;
 
-		// Get signed constraints from database
-		let signed_constraints = self
-			.state
-			.db
-			.get_signed_constraints(slot)?
-			.ok_or(eyre!("No signed constraints found for slot {}", slot))?;
-
-		info!("verifying receiver list");
+		debug!("verifying receiver list");
 		// Verify the caller is part of the receivers list
-		if !signed_constraints.message.receivers.contains(&auth.public_key) {
+		if !signed_constraints.message.receivers.contains(&public_key) {
 			return Err(eyre!("Caller is not part of the receivers list for slot {}", slot));
 		}
 
-		info!("returning signed constraints");
+		info!("returning signed constraints for slot {}", slot);
 		Ok(ConstraintsResponse { constraints: vec![signed_constraints] })
 	}
 

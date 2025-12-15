@@ -115,53 +115,63 @@ impl SubmitBlockRequestWithProofs {
 }
 
 pub struct AuthorizationContext {
-	pub signature: BlsSignature,
-	pub public_key: BlsPublicKey,
-	pub nonce: u64,
-	pub signing_id: B256,
+	pub signature: Option<BlsSignature>,
+	pub public_key: Option<BlsPublicKey>,
+	pub nonce: Option<u64>,
+	pub signing_id: Option<B256>,
 }
 
 /// Extract and parse BLS signature, public key, nonce, and signing_id from headers
 impl AuthorizationContext {
 	pub fn from_headers(headers: &HeaderMap) -> Result<AuthorizationContext> {
-		// Extract required headers
-		let signature_header =
-			headers.get("X-Receiver-Signature").ok_or(eyre!("Missing X-Receiver-Signature header"))?;
+		// Extract headers
+		let signature = match headers.get("X-Receiver-Signature") {
+			Some(signature_header) => {
+				let signature_str =
+					signature_header.to_str().map_err(|_| eyre!("Invalid X-Receiver-Signature header"))?;
+				let bls_signature = BlsSignature::new(
+					signature_str
+						.strip_prefix("0x")
+						.unwrap_or(signature_str)
+						.as_bytes()
+						.try_into()
+						.map_err(|e| eyre!("Invalid BLS signature: {:?}", e))?,
+				);
+				Some(bls_signature)
+			}
+			None => None,
+		};
 
-		let public_key_header =
-			headers.get("X-Receiver-PublicKey").ok_or(eyre!("Missing X-Receiver-PublicKey header"))?;
+		let public_key = match headers.get("X-Receiver-PublicKey") {
+			Some(public_key_header) => {
+				let public_key_str =
+					public_key_header.to_str().map_err(|_| eyre!("Invalid X-Receiver-PublicKey header"))?;
+				let public_key = decode_pubkey(public_key_str)?;
+				Some(public_key)
+			}
+			None => None,
+		};
 
-		let nonce_header = headers.get("X-Receiver-Nonce").ok_or(eyre!("Missing X-Receiver-Nonce header"))?;
+		let signing_id = match headers.get("X-Receiver-SigningId") {
+			Some(signing_id_header) => {
+				let signing_id_str =
+					signing_id_header.to_str().map_err(|_| eyre!("Invalid X-Receiver-SigningId header"))?;
+				let signing_id =
+					B256::from_slice(signing_id_str.strip_prefix("0x").unwrap_or(signing_id_str).as_bytes());
+				Some(signing_id)
+			}
+			None => None,
+		};
 
-		let signing_id_header =
-			headers.get("X-Receiver-SigningId").ok_or(eyre!("Missing X-Receiver-SigningId header"))?;
+		let nonce = match headers.get("X-Receiver-Nonce") {
+			Some(nonce_header) => {
+				let nonce_str = nonce_header.to_str().map_err(|_| eyre!("Invalid X-Receiver-Nonce header"))?;
+				Some(nonce_str.parse::<u64>().map_err(|e| eyre!("Invalid nonce format: {}", e))?)
+			}
+			None => None,
+		};
 
-		// Parse BLS public key
-		let public_key_str = public_key_header.to_str().map_err(|_| eyre!("Invalid X-Receiver-PublicKey header"))?;
-
-		let public_key = decode_pubkey(public_key_str)?;
-
-		// Parse BLS signature
-		let signature_str = signature_header.to_str().map_err(|_| eyre!("Invalid X-Receiver-Signature header"))?;
-
-		let bls_signature = BlsSignature::new(
-			signature_str
-				.strip_prefix("0x")
-				.unwrap_or(signature_str)
-				.as_bytes()
-				.try_into()
-				.map_err(|e| eyre!("Invalid BLS signature: {:?}", e))?,
-		);
-
-		// Parse nonce
-		let nonce = nonce_header.to_str()?.parse::<u64>().map_err(|e| eyre!("Invalid nonce format: {}", e))?;
-
-		// Parse signing_id
-		let signing_id_str =
-			signing_id_header.to_str().map_err(|e| eyre!("Invalid X-Receiver-SigningId header: {:?}", e))?;
-		let signing_id = B256::from_slice(signing_id_str.strip_prefix("0x").unwrap_or(signing_id_str).as_bytes());
-
-		Ok(AuthorizationContext { signature: bls_signature, public_key, nonce, signing_id })
+		Ok(AuthorizationContext { signature, public_key, nonce, signing_id })
 	}
 }
 /// Response wrapper for GET /delegations
