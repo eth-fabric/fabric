@@ -3060,6 +3060,8 @@ dependencies = [
  "async-trait",
  "axum 0.8.7",
  "cb-common",
+ "ethereum_ssz",
+ "ethereum_ssz_derive",
  "eyre",
  "fabric-common",
  "lazy_static",

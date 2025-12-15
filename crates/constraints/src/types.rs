@@ -7,15 +7,16 @@ use axum::http::HeaderMap;
 use common::utils::decode_pubkey;
 use eyre::{Result, eyre};
 use serde::{Deserialize, Serialize};
+use ssz_derive::{Decode, Encode};
 
 /// A constraint with its type and payload
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
 pub struct Constraint {
 	pub constraint_type: u64,
 	pub payload: Bytes,
 }
 /// A delegation message from proposer to gateway
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
 pub struct Delegation {
 	pub proposer: BlsPublicKey,
 	pub delegate: BlsPublicKey,
@@ -25,7 +26,7 @@ pub struct Delegation {
 }
 
 /// A signed delegation with BLS signature
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
 pub struct SignedDelegation {
 	pub message: Delegation,
 	pub nonce: u64,
@@ -34,7 +35,7 @@ pub struct SignedDelegation {
 }
 
 /// A constraints message containing multiple constraints
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, Encode, Decode)]
 pub struct ConstraintsMessage {
 	pub proposer: BlsPublicKey,
 	pub delegate: BlsPublicKey,
@@ -44,7 +45,7 @@ pub struct ConstraintsMessage {
 }
 
 /// A signed constraints message with BLS signature
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
 pub struct SignedConstraints {
 	pub message: ConstraintsMessage,
 	pub nonce: u64,
@@ -53,19 +54,19 @@ pub struct SignedConstraints {
 }
 
 /// Constraint capabilities response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
 pub struct ConstraintCapabilities {
 	pub constraint_types: Vec<u64>,
 }
 
 /// Proofs of constraint validity for a block
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, Encode, Decode)]
 pub struct ConstraintProofs {
 	pub constraint_types: Vec<u64>,
 	pub payloads: Vec<Bytes>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
 pub struct SubmitBlockRequestWithProofs {
 	#[serde(flatten)]
 	pub message: AlloySubmitBlockRequest,
