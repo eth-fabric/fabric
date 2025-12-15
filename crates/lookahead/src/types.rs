@@ -1,4 +1,4 @@
-use alloy::rpc::types::beacon::BlsPublicKey;
+use alloy::{primitives::B256, rpc::types::beacon::BlsPublicKey};
 use common::utils::decode_pubkey;
 use eyre::Result;
 use reqwest::Url;
@@ -46,53 +46,9 @@ impl ValidatorDuty {
 /// Response from Beacon API for proposer duties
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProposerDutiesResponse {
-	/// Execution optimistic flag
+	pub dependent_root: B256,
 	pub execution_optimistic: bool,
-	/// Whether response is finalized
-	pub finalized: bool,
-	/// Array of proposer duties
 	pub data: Vec<ValidatorDuty>,
-}
-
-/// Beacon chain state information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BeaconState {
-	/// Current slot
-	pub slot: u64,
-	/// Current epoch
-	pub epoch: u64,
-}
-
-/// Validator status information from Beacon API
-#[derive(Debug, Clone)]
-pub struct ValidatorInfo {
-	/// Whether the validator is active (status is active_ongoing, active_exiting, or active_slashed)
-	pub is_active: bool,
-	/// Whether the validator has been slashed
-	pub is_slashed: bool,
-	/// Validator index in beacon state
-	pub validator_index: u64,
-}
-
-/// Response from Beacon API for validator status query
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidatorResponse {
-	pub data: ValidatorData,
-}
-
-/// Validator data from Beacon API
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidatorData {
-	pub index: String,
-	pub status: String,
-	pub validator: ValidatorDetails,
-}
-
-/// Validator details from Beacon API
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValidatorDetails {
-	pub pubkey: String,
-	pub slashed: bool,
 }
 
 #[cfg(test)]

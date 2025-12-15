@@ -1,3 +1,4 @@
+use alloy::primitives::B256;
 use axum::{Json, Router, extract::Path, routing::get};
 use eyre::Result;
 use lookahead::constants::PROPOSER_DUTIES_ROUTE;
@@ -34,7 +35,11 @@ async fn get_proposer_duties_handler(
 		})
 		.collect();
 
-	Json(ProposerDutiesResponse { execution_optimistic: false, finalized: true, data: duties })
+	Json(ProposerDutiesResponse {
+		execution_optimistic: false,
+		dependent_root: B256::from_slice(&[0; 32]),
+		data: duties,
+	})
 }
 
 #[tokio::main]
