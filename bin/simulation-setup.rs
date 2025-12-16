@@ -41,10 +41,12 @@ pub struct SimulationConfig {
 	secrets_path: String,
 
 	// --- Service URLs ----
-	signer_host: String,
-	signer_port: u16,
-	beacon_mock_host: String,
-	beacon_mock_port: u16,
+	proposer_signer_host: String,
+	proposer_signer_port: u16,
+	gateway_signer_host: String,
+	gateway_signer_port: u16,
+	beacon_host: String,
+	beacon_port: u16,
 	execution_client_host: String,
 	execution_client_port: u16,
 	gateway_host: String,
@@ -95,7 +97,8 @@ pub struct SimulationBuilder {
 	// Config file paths
 	gateway_cb_config: Option<String>,
 	proposer_cb_config: Option<String>,
-	signer_cb_config: Option<String>,
+	gateway_signer_cb_config: Option<String>,
+	proposer_signer_cb_config: Option<String>,
 	relay_config: Option<String>,
 	spammer_config: Option<String>,
 	gateway_db_path: Option<String>,
@@ -104,12 +107,14 @@ pub struct SimulationBuilder {
 	// Env file paths
 	gateway_env_file: Option<String>,
 	proposer_env_file: Option<String>,
-	signer_env_file: Option<String>,
+	gateway_signer_env_file: Option<String>,
+	proposer_signer_env_file: Option<String>,
 	relay_env_file: Option<String>,
 	spammer_env_file: Option<String>,
 	beacon_mock_env_file: Option<String>,
 	// Runtime state
-	signer_url: Option<Url>,
+	proposer_signer_url: Option<Url>,
+	gateway_signer_url: Option<Url>,
 	gateway_bls_proxy: Option<String>,
 	gateway_committer_address: Option<String>,
 }
@@ -125,7 +130,8 @@ impl SimulationBuilder {
 			proposer_module_id: None,
 			gateway_cb_config: None,
 			proposer_cb_config: None,
-			signer_cb_config: None,
+			gateway_signer_cb_config: None,
+			proposer_signer_cb_config: None,
 			relay_config: None,
 			spammer_config: None,
 			gateway_db_path: None,
@@ -133,11 +139,13 @@ impl SimulationBuilder {
 			relay_db_path: None,
 			gateway_env_file: None,
 			proposer_env_file: None,
-			signer_env_file: None,
+			gateway_signer_env_file: None,
+			proposer_signer_env_file: None,
 			relay_env_file: None,
 			spammer_env_file: None,
 			beacon_mock_env_file: None,
-			signer_url: None,
+			proposer_signer_url: None,
+			gateway_signer_url: None,
 			gateway_bls_proxy: None,
 			gateway_committer_address: None,
 		}
@@ -178,16 +186,22 @@ impl SimulationBuilder {
 
 	pub fn initialize_paths(&mut self, docker: bool) -> Result<&mut Self> {
 		// Set signer URL
-		self.signer_url = Some(Url::parse(&format!(
+		self.proposer_signer_url = Some(Url::parse(&format!(
 			"http://{host}:{port}",
-			host = self.config.signer_host.parse::<IpAddr>().expect("Failed to parse signer host"),
-			port = self.config.signer_port
+			host = self.config.proposer_signer_host.parse::<IpAddr>().expect("Failed to parse proposer signer host"),
+			port = self.config.proposer_signer_port
+		))?);
+		self.gateway_signer_url = Some(Url::parse(&format!(
+			"http://{host}:{port}",
+			host = self.config.gateway_signer_host.parse::<IpAddr>().expect("Failed to parse gateway signer host"),
+			port = self.config.gateway_signer_port
 		))?);
 
 		let dest = if docker { "config/docker" } else { "config/simulation" };
 
 		// Set config file paths
-		self.signer_cb_config = Some(format!("{}/signer.toml", dest));
+		self.gateway_signer_cb_config = Some(format!("{}/gateway-signer.toml", dest));
+		self.proposer_signer_cb_config = Some(format!("{}/proposer-signer.toml", dest));
 		self.gateway_cb_config = Some(format!("{}/gateway.toml", dest));
 		self.proposer_cb_config = Some(format!("{}/proposer.toml", dest));
 		self.relay_config = Some(format!("{}/relay.toml", dest));
@@ -196,7 +210,8 @@ impl SimulationBuilder {
 		// Set env file paths
 		self.gateway_env_file = Some(format!("{}/gateway.env", dest));
 		self.proposer_env_file = Some(format!("{}/proposer.env", dest));
-		self.signer_env_file = Some(format!("{}/signer.env", dest));
+		self.gateway_signer_env_file = Some(format!("{}/gateway-signer.env", dest));
+		self.proposer_signer_env_file = Some(format!("{}/proposer-signer.env", dest));
 		self.relay_env_file = Some(format!("{}/relay.env", dest));
 		self.spammer_env_file = Some(format!("{}/spammer.env", dest));
 		self.beacon_mock_env_file = Some(format!("{}/beacon-mock.env", dest));
@@ -205,7 +220,7 @@ impl SimulationBuilder {
 
 	pub fn write_env_files(&mut self, docker: bool) -> Result<&mut Self> {
 		let signer_url =
-			if docker { "http://signer:20000".to_string() } else { self.signer_url.clone().unwrap().to_string() };
+			if docker { "http://gateway-signer:20000".to_string() } else { self.gateway_signer_url.clone().unwrap().to_string() };
 
 		// Gateway .env file
 		let config_path = if docker { "config.toml".to_string() } else { self.gateway_cb_config.clone().unwrap() };
@@ -226,6 +241,8 @@ impl SimulationBuilder {
 		std::fs::write(self.gateway_env_file.clone().unwrap(), gateway_env_content)?;
 
 		// Proposer .env file
+		let signer_url =
+		if docker { "http://proposer-signer:20000".to_string() } else { self.proposer_signer_url.clone().unwrap().to_string() };
 		let config_path = if docker { "config.toml".to_string() } else { self.proposer_cb_config.clone().unwrap() };
 		let proposer_env_content = format!(
 			"# Simulation environment variables\n\
@@ -243,8 +260,8 @@ impl SimulationBuilder {
 		);
 		std::fs::write(self.proposer_env_file.clone().unwrap(), proposer_env_content)?;
 
-		// Signer .env file
-		let config_path = if docker { "config.toml".to_string() } else { self.signer_cb_config.clone().unwrap() };
+		// Gateway Signer .env file
+		let config_path = if docker { "config.toml".to_string() } else { self.gateway_signer_cb_config.clone().unwrap() };
 		let cb_jwts = format!(
 			"{gateway_module_id}={gateway_jwt},{proposer_module_id}={proposer_jwt}",
 			gateway_module_id = self.gateway_module_id.clone().unwrap(),
@@ -264,7 +281,30 @@ impl SimulationBuilder {
 			admin_jwt = self.admin_jwt.clone().unwrap(),
 			log_level = self.config.log_level
 		);
-		std::fs::write(self.signer_env_file.clone().unwrap(), signer_env_content)?;
+		std::fs::write(self.gateway_signer_env_file.clone().unwrap(), signer_env_content)?;
+
+		// Proposer Signer .env file
+		let config_path = if docker { "config.toml".to_string() } else { self.proposer_signer_cb_config.clone().unwrap() };
+		let cb_jwts = format!(
+			"{gateway_module_id}={gateway_jwt},{proposer_module_id}={proposer_jwt}",
+			gateway_module_id = self.gateway_module_id.clone().unwrap(),
+			gateway_jwt = self.gateway_jwt.clone().unwrap(),
+			proposer_module_id = self.proposer_module_id.clone().unwrap(),
+			proposer_jwt = self.proposer_jwt.clone().unwrap()
+		);
+		let signer_env_content = format!(
+			"# Simulation environment variables\n\
+             # Generated by simulation-setup binary\n\n\
+             CB_CONFIG={config_path}\n\
+             CB_JWTS={cb_jwts}\n\
+             CB_SIGNER_ADMIN_JWT={admin_jwt}\n\
+             RUST_LOG={log_level}\n",
+			config_path = config_path,
+			cb_jwts = cb_jwts,
+			admin_jwt = self.admin_jwt.clone().unwrap(),
+			log_level = self.config.log_level
+		);
+		std::fs::write(self.proposer_signer_env_file.clone().unwrap(), signer_env_content)?;
 
 		// Relay .env file
 		let config_path = if docker { "config.toml".to_string() } else { self.relay_config.clone().unwrap() };
@@ -298,8 +338,8 @@ impl SimulationBuilder {
 				BEACON_PORT={beacon_port}\n\
 				PROPOSER_KEY={proposer_key}\n\
 				RUST_LOG={log_level}\n",
-			beacon_host = self.config.beacon_mock_host,
-			beacon_port = self.config.beacon_mock_port,
+			beacon_host = self.config.beacon_host,
+			beacon_port = self.config.beacon_port,
 			proposer_key = self.config.proposer_consensus_key,
 			log_level = self.config.log_level
 		);
@@ -310,7 +350,7 @@ impl SimulationBuilder {
 
 	pub async fn generate_proxy_keys(&mut self, docker: bool) -> Result<&mut Self> {
 		// Load signer config
-		dotenv::from_filename(self.signer_env_file.clone().unwrap())?;
+		dotenv::from_filename(self.gateway_signer_env_file.clone().unwrap())?;
 
 		// Force correct CB_CONFIG path since docker changes
 		let path = if docker { "config/docker/signer.toml" } else { "config/simulation/signer.toml" };
@@ -339,8 +379,9 @@ impl SimulationBuilder {
 		Ok(self)
 	}
 
-	pub fn write_signer_config(&mut self) -> Result<&mut Self> {
-		let mut doc = self.cb_config();
+	pub fn write_signer_config(&mut self, gateway: bool) -> Result<&mut Self> {
+		let path = if gateway { self.gateway_signer_cb_config.clone().unwrap() } else { self.proposer_signer_cb_config.clone().unwrap() };
+		let mut doc = self.cb_config(gateway);
 
 		doc.push_str(&format!(
 			r#"# Gateway Module configuration
@@ -365,12 +406,12 @@ env_file = "n/a""#,
 		));
 
 		let toml = doc.parse::<DocumentMut>().expect("invalid signer toml");
-		std::fs::write(self.signer_cb_config.clone().unwrap(), toml.to_string())?;
+		std::fs::write(path, toml.to_string())?;
 		Ok(self)
 	}
 
 	pub fn write_gateway_config(&mut self, docker: bool) -> Result<&mut Self> {
-		let mut doc = self.cb_config();
+		let mut doc = self.cb_config(true);
 
 		let relay_host = if docker { "relay" } else { self.config.relay_host.as_str() };
 
@@ -450,10 +491,10 @@ gateway_public_key = "{gateway_public_key}"
 	}
 
 	pub fn write_proposer_config(&mut self, docker: bool) -> Result<&mut Self> {
-		let mut doc = self.cb_config();
+		let mut doc = self.cb_config(false);
 
 		let relay_host = if docker { "relay" } else { self.config.relay_host.as_str() };
-		let beacon_api_host = if docker { "beacon-mock" } else { self.config.beacon_mock_host.as_str() };
+		let beacon_api_host = if docker { "beacon-mock" } else { self.config.beacon_host.as_str() };
 
 		doc.push_str(&format!(
 			r#"
@@ -502,7 +543,7 @@ module_signing_id = "{module_signing_id}"
 			relay_host = relay_host,
 			relay_port = self.config.relay_port,
 			beacon_api_host = beacon_api_host,
-			beacon_api_port = self.config.beacon_mock_port,
+			beacon_api_port = self.config.beacon_port,
 			lookahead_check_interval_seconds = self.config.lookahead_check_interval_seconds,
 			module_signing_id = self.config.proposer_module_signing_id
 		));
@@ -514,7 +555,7 @@ module_signing_id = "{module_signing_id}"
 	}
 
 	pub fn write_relay_config(&mut self, docker: bool) -> Result<&mut Self> {
-		let beacon_api_host = if docker { "beacon-mock" } else { self.config.beacon_mock_host.as_str() };
+		let beacon_api_host = if docker { "beacon-mock" } else { self.config.beacon_host.as_str() };
 
 		let doc = format!(
 			r#"# This file is automatically generated by the simulation-setup binary
@@ -536,7 +577,7 @@ downstream_relay_port = {downstream_relay_port}
 			db_path = self.relay_db_path.clone().unwrap(),
 			constraint_capabilities = INCLUSION_CONSTRAINT_TYPE,
 			beacon_api_host = beacon_api_host,
-			beacon_api_port = self.config.beacon_mock_port,
+			beacon_api_port = self.config.beacon_port,
 			lookahead_update_interval = self.config.lookahead_update_interval,
 			downstream_relay_host = self.config.downstream_relay_host,
 			downstream_relay_port = self.config.downstream_relay_port,
@@ -581,7 +622,9 @@ slasher_address = "{slasher_address}"
 
 	// --- Private helper methods ---
 
-	fn cb_config(&self) -> String {
+	fn cb_config(&self, gateway: bool) -> String {
+		let host = if gateway { self.config.gateway_signer_host.clone() } else { self.config.proposer_signer_host.clone() };
+		let port = if gateway { self.config.gateway_signer_port } else { self.config.proposer_signer_port };
 		format!(
 			r#"# This file is automatically generated by the simulation-setup binary
 # It contains necessary configuration data as required by commit-boost
@@ -616,16 +659,17 @@ secrets_path = "{secrets_path}"
 proxy_dir = "{proxy_key_dir}"
 		"#,
 			chain = self.config.chain,
-			host = self.config.signer_host,
-			port = self.config.signer_port,
+			host = host,
+			port = port,
 			keys_path = self.config.keys_path,
 			secrets_path = self.config.secrets_path,
 			proxy_key_dir = self.config.proxy_key_dir
 		)
 	}
 
+	/// Assumes the gateway signer is used
 	async fn launch_signer_client(&self) -> Result<SignerClient> {
-		let signer_url = self.signer_url.clone().unwrap();
+		let signer_url = self.gateway_signer_url.clone().unwrap();
 		let client = SignerClient::new(
 			signer_url,
 			None,
@@ -635,6 +679,7 @@ proxy_dir = "{proxy_key_dir}"
 		Ok(client)
 	}
 
+	/// Assumes the gateway signer is used
 	async fn generate_gateway_proxy_keys(&self) -> Result<(BlsPublicKey, String)> {
 		let mut client = self.launch_signer_client().await?;
 
@@ -664,7 +709,8 @@ async fn main() -> Result<()> {
 		.initialize_module_ids()?
 		.initialize_paths(docker)?
 		.write_env_files(docker)?
-		.write_signer_config()?
+		.write_signer_config(true)?
+		.write_signer_config(false)?
 		.generate_proxy_keys(docker)
 		.await?
 		.write_gateway_config(docker)?

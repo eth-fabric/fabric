@@ -7,10 +7,11 @@ setup-simulation:
 	cargo run --bin simulation-setup
 
 # Run local signer module
-run-local-signer:
+run-local-signer target="config/simulation/gateway-signer.env":
 	#!/usr/bin/env bash
+	echo "Using target env file: {{target}}"
 	set -a
-	source config/simulation/signer.env
+	source {{target}}
 	set +a
 	cargo run --bin local-signer-module
 

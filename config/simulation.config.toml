@@ -23,26 +23,38 @@ keys_path = "./data/keystores/keys"
 secrets_path = "./data/keystores/secrets"
 
 # --- Service URLs ----
-# Signer
-signer_host = "127.0.0.1"
-signer_port = 20000
+# Location of Commit-Boost Signing API
+proposer_signer_host = "127.0.0.1"
+proposer_signer_port = 20000
+gateway_signer_host = "127.0.0.1"
+gateway_signer_port = 20000
 
-# Beacon mock
-beacon_mock_host = "127.0.0.1"
-beacon_mock_port = 15052
+# Location of (unauthenticated) Beacon Node API
+beacon_host = "127.0.0.1"
+beacon_port = 15052
 
+# Location of Execution Client JSON-RPC
 execution_client_host = "127.0.0.1"
 execution_client_port = 8545
 
-# Gateway
+# Where Gateway will listen for Commitments JSON-RPC requests
 gateway_host = "127.0.0.1"
 gateway_port = 8080
+
+# Where Gateway will listen for Metrics requests
 gateway_metrics_host = "127.0.0.1"
 gateway_metrics_port = 8002
 
-# Relay
+# Where Relay will listen for Constraints API requests
 relay_host = "127.0.0.1"
 relay_port = 9998
+
+# Where Relay will proxy unhandled requests to / forward block requests to after verifying proofs
+downstream_relay_host = "127.0.0.1"
+downstream_relay_port = 9999
+
+# Relay specific
+lookahead_update_interval = 30
 
 # Gateway specific
 constraints_receivers = []
@@ -50,11 +62,6 @@ delegation_check_interval_seconds = 6
 
 # Proposer specific
 lookahead_check_interval_seconds = 12
-
-# Relay specific
-lookahead_update_interval = 30
-downstream_relay_host = "127.0.0.1"
-downstream_relay_port = 9999
 
 # Spammer specific
 spammer_mode = "continuous"
