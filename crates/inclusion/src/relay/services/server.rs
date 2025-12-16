@@ -111,6 +111,7 @@ impl ConstraintsApi for RelayServer {
 
 		// Bypass authentication if the receivers list is empty
 		if signed_constraints.message.receivers.is_empty() {
+			debug!("get_constraints(): No receivers list found for slot {}, bypassing authentication", slot);
 			return Ok(ConstraintsResponse { constraints: vec![signed_constraints] });
 		}
 
@@ -188,6 +189,7 @@ impl ConstraintsApi for RelayServer {
 		block_request: SubmitBlockRequestWithProofs,
 		headers: HeaderMap,
 	) -> Result<()> {
+		info!("post_blocks_with_proofs()");
 		// Get the slot
 		let slot = block_request.slot();
 
