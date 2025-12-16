@@ -17,10 +17,14 @@ db_path = "/tmp/rocksdb"
 
 # Key paths
 gateway_default_bls_key = "0xb3a22e4a673ac7a153ab5b3c17a4dbef55f7e47210b20c0cbb0e66df5b36bb49ef808577610b034172e955d2312a61b9"
+gateway_proxy_key_dir = "./data/proxy"
+gateway_keys_path = "./data/keystores/keys"
+gateway_secrets_path = "./data/keystores/secrets"
+
 proposer_consensus_key = "0x883827193f7627cd04e621e1e8d56498362a52b2a30c9a1c72036eb935c4278dee23d38a24d2f7dda62689886f0c39f4"
-proxy_key_dir = "./data/proxy"
-keys_path = "./data/keystores/keys"
-secrets_path = "./data/keystores/secrets"
+proposer_proxy_key_dir = "./data/proxy"
+proposer_keys_path = "./data/keystores/keys"
+proposer_secrets_path = "./data/keystores/secrets"
 
 # --- Service URLs ----
 # Location of Commit-Boost Signing API
