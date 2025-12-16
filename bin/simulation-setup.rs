@@ -56,6 +56,7 @@ pub struct SimulationConfig {
 
 	// Gateway specific
 	delegation_check_interval_seconds: u64,
+	constraints_receivers: Vec<String>,
 
 	// Proposer specific
 	lookahead_check_interval_seconds: u64,
@@ -411,7 +412,7 @@ execution_client_host = "{execution_client_host}"
 execution_client_port = {execution_client_port}
 
 # Constraints receivers (set to gateway BLS proxy key for now)
-constraints_receivers = ["{constraints_receivers}"]
+constraints_receivers = [] # todo add once builder can sign x-receiver headers
 
 # Module signing ID for this gateway instance
 module_signing_id = "{module_signing_id}"
@@ -436,7 +437,7 @@ gateway_public_key = "{gateway_public_key}"
 			relay_port = self.config.relay_port,
 			execution_client_host = self.config.execution_client_host,
 			execution_client_port = self.config.execution_client_port,
-			constraints_receivers = self.gateway_bls_proxy.clone().expect("gateway BLS proxy key not set"),
+			// constraints_receivers = self.config.constraints_receivers.join(","),
 			module_signing_id = self.config.gateway_module_signing_id,
 			delegation_check_interval_seconds = self.config.delegation_check_interval_seconds,
 			gateway_public_key = self.gateway_bls_proxy.clone().expect("gateway BLS proxy key not set")
