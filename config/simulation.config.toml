@@ -29,7 +29,7 @@ signer_port = 20000
 
 # Beacon mock
 beacon_mock_host = "127.0.0.1"
-beacon_mock_port = 5052
+beacon_mock_port = 15052
 
 execution_client_host = "127.0.0.1"
 execution_client_port = 8545
