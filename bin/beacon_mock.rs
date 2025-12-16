@@ -22,16 +22,17 @@ async fn get_proposer_duties_handler(
 	// Odd slots: use default random key
 	let duties: Vec<ValidatorDuty> = (start_slot..=end_slot)
 		.map(|slot| {
-			let is_even = slot % 2 == 0;
-			let pubkey = if is_even {
-				proposer_key.clone()
-			} else {
-				// Default random but valid BLS public key
-				"0x879d322fb401a2638b6217cab6e9bf954e6df9b18e0c302f3bdc00551a8ac308459d8a79eb54f0f272e6b648ee4d03b3"
-					.to_string()
-			};
+			// let is_even = slot % 2 == 0;
+			// let pubkey = if is_even {
+			// 	proposer_key.clone()
+			// } else {
+			// 	// Default random but valid BLS public key
+			// 	"0x879d322fb401a2638b6217cab6e9bf954e6df9b18e0c302f3bdc00551a8ac308459d8a79eb54f0f272e6b648ee4d03b3"
+			// 		.to_string()
+			// };
 
-			ValidatorDuty { validator_index: slot.to_string(), pubkey, slot: slot.to_string() }
+			// ValidatorDuty { validator_index: slot.to_string(), pubkey, slot: slot.to_string() }
+			ValidatorDuty { validator_index: slot.to_string(), pubkey: proposer_key.clone(), slot: slot.to_string() }
 		})
 		.collect();
 
