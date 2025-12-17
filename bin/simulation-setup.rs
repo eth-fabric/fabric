@@ -44,6 +44,8 @@ pub struct SimulationConfig {
 	proposer_keys_path: String,
 	proposer_secrets_path: String,
 
+	relay_bls_key: String,
+
 	// --- Service URLs ----
 	proposer_signer_host: String,
 	proposer_signer_port: u16,
@@ -207,7 +209,8 @@ impl SimulationBuilder {
 		))?);
 
 		self.relay_url = Some(Url::parse(&format!(
-			"http://{host}:{port}",
+			"http://{relay_key}@{host}:{port}",
+			relay_key = self.config.relay_bls_key,
 			host = self.config.relay_host.parse::<IpAddr>().expect("Failed to parse relay host"),
 			port = self.config.relay_port
 		))?);
@@ -363,12 +366,15 @@ impl SimulationBuilder {
 		Ok(self)
 	}
 
+	// Generate gateway and proxy keys
 	pub async fn generate_proxy_keys(&mut self, docker: bool) -> Result<&mut Self> {
 		// Load signer config
 		dotenv::from_filename(self.gateway_signer_env_file.clone().unwrap())?;
 
+		let gateway_signer_config_path = self.gateway_signer_cb_config.clone().unwrap();
+
 		// Force correct CB_CONFIG path since docker changes
-		let path = if docker { "config/docker/signer.toml" } else { "config/simulation/signer.toml" };
+		let path = if docker { "config/docker/signer.toml" } else { gateway_signer_config_path.as_str() };
 		unsafe {
 			std::env::set_var("CB_CONFIG", path);
 		}

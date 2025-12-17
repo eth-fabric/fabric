@@ -26,6 +26,10 @@ proposer_proxy_key_dir = "./data/proxy"
 proposer_keys_path = "./data/keystores/keys"
 proposer_secrets_path = "./data/keystores/secrets"
 
+# Key that is prepended to the relay URL used by commit-boost
+# Currently this is unused by the constraints server
+relay_bls_key = "0xafa4c6985aa049fb79dd37010438cfebeb0f2bd42b115b89dd678dab0670c1de38da0c4e9138c9290a398ecd9a0b3110"
+
 # --- Service URLs ----
 # Location of Commit-Boost Signing API
 proposer_signer_host = "127.0.0.1"
