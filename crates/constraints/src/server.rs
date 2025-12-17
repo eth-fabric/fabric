@@ -7,6 +7,7 @@ use axum::{
 	response::IntoResponse,
 	routing::{get, post},
 };
+use tracing::{error, info};
 
 use crate::api::ConstraintsApi;
 use crate::metrics::server_http_metrics;
@@ -218,10 +219,12 @@ where
 
 	match api.post_blocks_with_proofs(body, headers).await {
 		Ok(()) => {
+			info!("Blocks with proofs submitted successfully");
 			metrics.finish_status(ENDPOINT, METHOD, StatusCode::OK.as_u16(), start);
 			StatusCode::OK.into_response()
 		}
 		Err(e) => {
+			error!("Failed to submit blocks with proofs: {e}");
 			metrics.finish_status(ENDPOINT, METHOD, StatusCode::INTERNAL_SERVER_ERROR.as_u16(), start);
 			(StatusCode::INTERNAL_SERVER_ERROR, format!("failed to submit blocks with proofs: {e}")).into_response()
 		}

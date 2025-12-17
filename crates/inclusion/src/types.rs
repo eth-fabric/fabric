@@ -148,8 +148,7 @@ impl InclusionPayload {
 		};
 
 		// Create a mock signature that will pass the format validation
-		let encoded_tx = tx.encoded_for_signing();
-		let signature = signer.sign_message_sync(&encoded_tx).expect("Failed to sign message");
+		let signature = signer.sign_hash_sync(&tx.signature_hash()).expect("Failed to sign message");
 		let signed_tx = Signed::new_unhashed(tx, signature);
 		let tx_envelope = TxEnvelope::Eip1559(signed_tx);
 		let mut encoded_tx = Vec::new();

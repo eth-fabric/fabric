@@ -1,6 +1,8 @@
-use alloy::consensus::{SignableTransaction, Signed, TxEip1559, TxEnvelope};
+use alloy::consensus::{SignableTransaction, Signed, TxEnvelope};
 use alloy::eips::eip2718::Encodable2718;
-use alloy::primitives::{Address, Bytes, TxKind, U256};
+use alloy::network::{Ethereum, TransactionBuilder};
+use alloy::primitives::{Address, Bytes, ChainId, U256};
+use alloy::providers::{Provider, ProviderBuilder};
 use alloy::signers::{SignerSync, local::PrivateKeySigner};
 use commitments::client::CommitmentsHttpClient;
 use eyre::{Result, WrapErr};
@@ -26,34 +28,69 @@ struct SpammerConfig {
 	gateway_host: String,
 	/// Gateway RPC (commitments) port
 	gateway_port: u16,
+	/// Execution client host
+	execution_client_host: String,
+	/// Execution client port
+	execution_client_port: u16,
 	/// Interval between requests in seconds (only used in continuous mode)
 	interval_secs: u64,
-	/// Sender private key (must have ETH balance for test transactions)
-	sender_private_key: String,
 	/// Slasher contract address (optional, random if not provided)
 	slasher_address: Option<String>,
 	/// Chain ID for transactions
 	chain: Chain,
 }
 
-/// Generate a valid signed transaction
-fn generate_signed_transaction(config: &SpammerConfig, signer: &PrivateKeySigner, nonce: u64) -> Result<Bytes> {
-	// Create EIP-1559 transaction with random recipient
-	let tx = TxEip1559 {
-		chain_id: config.chain.id().try_into().expect("Chain ID conversion failed"),
-		nonce,
-		gas_limit: 21000,
-		max_fee_per_gas: 20000000000,
-		max_priority_fee_per_gas: 2000000000,
-		to: TxKind::Call(Address::random()), // Random recipient address
-		value: U256::from(100000000),
-		input: Bytes::new(),
-		access_list: Default::default(),
-	};
+impl SpammerConfig {
+	fn chain_id(&self) -> ChainId {
+		match self.chain.to_string().to_lowercase().as_str() {
+			"mainnet" => 1,
+			"hoodi" => 560048,
+			"anvil" => 31337,
+			_ => panic!("Invalid chain name: {}", self.chain),
+		}
+	}
+}
 
-	// Sign the transaction
-	let encoded_tx = tx.encoded_for_signing();
-	let signature = signer.sign_message_sync(&encoded_tx).wrap_err("Failed to sign transaction")?;
+/// Generate a valid signed transaction
+async fn generate_signed_transaction(config: &SpammerConfig, signer: &PrivateKeySigner) -> Result<Bytes> {
+	// Create execution client
+	let execution_client_url =
+		Url::parse(format!("http://{}:{}", config.execution_client_host, config.execution_client_port).as_str())?;
+	let execution_client = ProviderBuilder::new().network::<Ethereum>().connect_http(execution_client_url);
+
+	let nonce = execution_client.get_transaction_count(signer.address()).await?;
+	let chain_id = config.chain_id();
+
+	let latest_block = execution_client
+    .get_block_by_number(alloy::eips::BlockNumberOrTag::Latest)
+    .await?
+    .ok_or_else(|| eyre::eyre!("Failed to get latest block"))?;
+	let base_fee = latest_block.header.base_fee_per_gas
+		.ok_or_else(|| eyre::eyre!("No base fee in block (pre-EIP-1559?)"))?;
+	let max_fee_per_gas = base_fee * 2;
+
+	let balance = execution_client.get_balance(signer.address()).await?;
+	info!("Sender address: {:?}", signer.address());
+	info!("Sender balance: {} wei", balance);
+	info!("Base fee: {} wei, max_fee_per_gas: {} wei", base_fee, max_fee_per_gas);
+	info!("Max cost: {} wei", U256::from(21000) * U256::from(max_fee_per_gas) + U256::from(1));
+
+	// Create EIP-1559 transaction with random recipient
+	let tx = execution_client
+		.transaction_request()
+		.from(signer.address())
+		.to(Address::random())
+		.value(U256::from(1))
+		.gas_limit(21000)
+		.nonce(nonce)
+		.max_priority_fee_per_gas(1)
+		.max_fee_per_gas(max_fee_per_gas.into())
+		.with_chain_id(chain_id)
+		.build_1559()?;
+
+	// Sign the transaction hash
+	let signature_hash = tx.signature_hash();
+	let signature = signer.sign_hash_sync(&signature_hash).wrap_err("Failed to sign transaction")?;
 
 	// Create signed transaction envelope
 	let signed_tx = Signed::new_unhashed(tx, signature);
@@ -99,10 +136,9 @@ async fn send_commitment_request(gateway_url: Url, request: &CommitmentRequest) 
 async fn create_and_send_commitment_request(
 	config: &SpammerConfig,
 	signer: &PrivateKeySigner,
-	nonce: u64,
 ) -> Result<SignedCommitment> {
 	let gateway_url = Url::parse(format!("http://{}:{}", config.gateway_host, config.gateway_port).as_str())?;
-	let tx = generate_signed_transaction(config, signer, nonce)?;
+	let tx = generate_signed_transaction(config, signer).await?;
 	let request = create_commitment_request(config, tx)?;
 	let response = send_commitment_request(gateway_url, &request).await?;
 	Ok(response)
@@ -110,7 +146,7 @@ async fn create_and_send_commitment_request(
 
 /// Run in one-shot mode
 async fn run_one_shot(config: &SpammerConfig, signer: &PrivateKeySigner) -> Result<()> {
-	match create_and_send_commitment_request(config, signer, 0).await {
+	match create_and_send_commitment_request(config, signer).await {
 		Ok(response) => {
 			info!("Commitment request successful!");
 			info!("Request hash: {:?}", response.commitment.request_hash);
@@ -127,16 +163,14 @@ async fn run_continuous(config: &SpammerConfig, signer: &PrivateKeySigner) -> Re
 	info!("Running in continuous mode (interval: {}s)", config.interval_secs);
 
 	let mut interval = time::interval(Duration::from_secs(config.interval_secs));
-	let mut nonce = 0u64;
 
 	let mut shutdown = Box::pin(common::utils::wait_for_signal());
 	loop {
 		tokio::select! {
 			_ = interval.tick() => {
-				match create_and_send_commitment_request(config, signer, nonce).await {
+				match create_and_send_commitment_request(config, signer).await {
 					Ok(response) => {
 						info!("Commitment request successful, request hash {:?}, signature {:?}", response.commitment.request_hash, response.signature.to_string());
-						nonce += 1;
 					}
 					Err(e) => {
 						error!("✗ Failed to create and send commitment request: {}", e);
@@ -157,6 +191,8 @@ async fn main() -> Result<()> {
 	// Setup logging
 	common::logging::setup_logging(&std::env::var("RUST_LOG").expect("RUST_LOG environment variable not set"))?;
 
+	let sender_private_key = std::env::var("SENDER_PRIVATE_KEY").expect("SENDER_PRIVATE_KEY environment variable not set");
+
 	let config_path = std::env::var("CONFIG_PATH").expect("CONFIG_PATH environment variable not set");
 
 	info!("Loading configuration from: {}", config_path);
@@ -172,7 +208,7 @@ async fn main() -> Result<()> {
 
 	// Parse sender private key
 	let signer =
-		config.sender_private_key.parse::<PrivateKeySigner>().wrap_err("Failed to parse sender private key")?;
+		sender_private_key.parse::<PrivateKeySigner>().wrap_err("Failed to parse sender private key")?;
 	let sender_address = signer.address();
 	info!("Sender address: {:?}", sender_address);
 

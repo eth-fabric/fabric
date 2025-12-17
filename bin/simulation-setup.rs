@@ -77,7 +77,6 @@ pub struct SimulationConfig {
 	// Spammer specific
 	spammer_mode: String,
 	spammer_interval_secs: u64,
-	spammer_private_key: String,
 	slasher_address: String,
 }
 
@@ -622,16 +621,18 @@ mode = "{mode}"
 chain = "{chain}"
 gateway_host = "{gateway_host}"
 gateway_port = {gateway_port}
+execution_client_host = "{execution_client_host}"
+execution_client_port = {execution_client_port}
 interval_secs = {interval_secs}
-sender_private_key = "{sender_private_key}"
 slasher_address = "{slasher_address}"
 "#,
 			mode = self.config.spammer_mode,
 			chain = self.config.chain,
 			gateway_host = gateway_host,
 			gateway_port = self.config.gateway_port,
+			execution_client_host = self.config.execution_client_host,
+			execution_client_port = self.config.execution_client_port,
 			interval_secs = self.config.spammer_interval_secs,
-			sender_private_key = self.config.spammer_private_key,
 			slasher_address = self.config.slasher_address,
 		);
 
