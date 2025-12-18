@@ -1,11 +1,14 @@
 use alloy::consensus::TxEnvelope;
 use alloy::primitives::{B256, Bytes, U256};
+use alloy::rpc::types::beacon::relay::SubmitBlockRequest as AlloySubmitBlockRequest;
 use eth_trie::{EthTrie, MemoryDB, Trie};
 use ethereum_types::H256;
 use eyre::{Context, Result, eyre};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tracing::info;
 
+use constraints::helpers::extract_transactions;
 use constraints::types::ConstraintProofs;
 
 /// Merkle inclusion proof for an inclusion payload
@@ -81,6 +84,10 @@ impl TransactionTrieBuilder {
 
 	/// Proves inclusion of a batch of transactions and returns an encoded ConstraintProofs
 	pub fn prove_batch(&mut self, tx_hashes: &[B256]) -> Result<ConstraintProofs> {
+		// Finalize the trie by computing root before generating proofs
+		// This ensures the trie structure is committed and proofs will be valid
+		let _ = self.root()?;
+
 		let payloads: Vec<Bytes> = tx_hashes
 			.iter()
 			.map(|tx_hash| InclusionProof::new(self, *tx_hash)?.to_bytes())
@@ -99,8 +106,20 @@ impl TransactionTrieBuilder {
 				return Err(eyre!("Invalid constraint type {constraint_type}"));
 			}
 
-			let proof = InclusionProof::from_bytes(payload)?;
-			self.verify_proof(proof.tx_index, &proof.proof, &transactions_root)?;
+			let inclusion_proof: InclusionProof = InclusionProof::from_bytes(payload)?;
+			let tx_bytes = self.verify_proof(inclusion_proof.tx_index, &inclusion_proof.proof, &transactions_root)?;
+
+			// Decode the transaction and verify the hash matches the claimed tx_hash
+			let tx: TxEnvelope = alloy::rlp::Decodable::decode(&mut tx_bytes.as_slice())
+				.wrap_err("Failed to decode transaction from proof")?;
+			if *tx.hash() != inclusion_proof.tx_hash {
+				return Err(eyre!(
+					"Transaction hash mismatch: proof claims {} but transaction at index {} has hash {}",
+					inclusion_proof.tx_hash,
+					inclusion_proof.tx_index,
+					tx.hash()
+				));
+			}
 		}
 		Ok(())
 	}
@@ -156,6 +175,30 @@ impl Default for TransactionTrieBuilder {
 	}
 }
 
+pub fn prove_constraints(block: &AlloySubmitBlockRequest, tx_hashes: &[B256]) -> Result<ConstraintProofs> {
+	if tx_hashes.is_empty() {
+		return Ok(ConstraintProofs::default());
+	}
+	let transactions = extract_transactions(block)?;
+	let mut builder = TransactionTrieBuilder::build(&transactions)?;
+	let proofs = builder.prove_batch(tx_hashes)?;
+	Ok(proofs)
+}
+
+pub fn verify_constraints(block: &AlloySubmitBlockRequest, proofs: &ConstraintProofs) -> Result<()> {
+	let transactions = extract_transactions(block)?;
+
+	info!(
+		"Verifying constraints, transactions: {}, constraint_types: {}, proofs: {}",
+		transactions.len(),
+		proofs.constraint_types.len(),
+		proofs.payloads.len()
+	);
+
+	let mut builder = TransactionTrieBuilder::build(&transactions)?;
+	builder.verify_batch(proofs)?;
+	Ok(())
+}
 #[cfg(test)]
 mod tests {
 
@@ -213,5 +256,31 @@ mod tests {
 		// Verify proof
 		let verified = builder.verify_proof(1, &proof2, &root);
 		assert!(verified.is_ok());
+	}
+
+	#[test]
+	fn test_prove_batch_and_verify_batch() {
+		// Create test transactions
+		let payload1 = InclusionPayload::random();
+		let tx1 = payload1.decode_transaction().unwrap();
+		let payload2 = InclusionPayload::random();
+		let tx2 = payload2.decode_transaction().unwrap();
+		let payload3 = InclusionPayload::random();
+		let tx3 = payload3.decode_transaction().unwrap();
+		let transactions = vec![tx1, tx2, tx3];
+
+		let tx_hashes = vec![payload1.tx_hash().unwrap(), payload2.tx_hash().unwrap(), payload3.tx_hash().unwrap()];
+
+		// Build trie and prove
+		let mut prover_builder = TransactionTrieBuilder::build(&transactions).unwrap();
+		let proofs = prover_builder.prove_batch(&tx_hashes).unwrap();
+
+		assert_eq!(proofs.constraint_types.len(), 3);
+		assert_eq!(proofs.payloads.len(), 3);
+
+		// Build a separate trie and verify (simulates verifier rebuilding from block)
+		let mut verifier_builder = TransactionTrieBuilder::build(&transactions).unwrap();
+		let result = verifier_builder.verify_batch(&proofs);
+		assert!(result.is_ok(), "verify_batch failed: {:?}", result.err());
 	}
 }

@@ -7,7 +7,7 @@ edition = "2024"
 default = ["full"]
 
 types = []
-proofs = ["eth_trie", "ethereum-types", "bincode"]
+proofs = ["eth_trie", "ethereum-types", "bincode", "tracing"]
 full = [
     "types",
     "proofs",

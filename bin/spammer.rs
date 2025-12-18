@@ -62,11 +62,11 @@ async fn generate_signed_transaction(config: &SpammerConfig, signer: &PrivateKey
 	let chain_id = config.chain_id();
 
 	let latest_block = execution_client
-    .get_block_by_number(alloy::eips::BlockNumberOrTag::Latest)
-    .await?
-    .ok_or_else(|| eyre::eyre!("Failed to get latest block"))?;
-	let base_fee = latest_block.header.base_fee_per_gas
-		.ok_or_else(|| eyre::eyre!("No base fee in block (pre-EIP-1559?)"))?;
+		.get_block_by_number(alloy::eips::BlockNumberOrTag::Latest)
+		.await?
+		.ok_or_else(|| eyre::eyre!("Failed to get latest block"))?;
+	let base_fee =
+		latest_block.header.base_fee_per_gas.ok_or_else(|| eyre::eyre!("No base fee in block (pre-EIP-1559?)"))?;
 	let max_fee_per_gas = base_fee * 2;
 
 	let balance = execution_client.get_balance(signer.address()).await?;
@@ -191,7 +191,8 @@ async fn main() -> Result<()> {
 	// Setup logging
 	common::logging::setup_logging(&std::env::var("RUST_LOG").expect("RUST_LOG environment variable not set"))?;
 
-	let sender_private_key = std::env::var("SENDER_PRIVATE_KEY").expect("SENDER_PRIVATE_KEY environment variable not set");
+	let sender_private_key =
+		std::env::var("SENDER_PRIVATE_KEY").expect("SENDER_PRIVATE_KEY environment variable not set");
 
 	let config_path = std::env::var("CONFIG_PATH").expect("CONFIG_PATH environment variable not set");
 
@@ -207,8 +208,7 @@ async fn main() -> Result<()> {
 	info!("  Chain ID: {}", config.chain.id());
 
 	// Parse sender private key
-	let signer =
-		sender_private_key.parse::<PrivateKeySigner>().wrap_err("Failed to parse sender private key")?;
+	let signer = sender_private_key.parse::<PrivateKeySigner>().wrap_err("Failed to parse sender private key")?;
 	let sender_address = signer.address();
 	info!("Sender address: {:?}", sender_address);
 

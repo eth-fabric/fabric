@@ -20,4 +20,4 @@ pub const CAPABILITIES: &str = "/constraints/v0/builder/capabilities";
 pub const BLOCKS_WITH_PROOFS: &str = "/constraints/v0/relay/blocks_with_proofs";
 
 /// Downstream builder API submit block endpoint for proxying (optional)
-pub const LEGACY_SUBMIT_BLOCK: &str = "/eth/v1/builder/blocks";
+pub const LEGACY_SUBMIT_BLOCK: &str = "/relay/v1/builder/blocks";

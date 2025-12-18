@@ -14,7 +14,7 @@ use signing::signer::verify_bls;
 use urc::utils::{get_constraints_message_signing_root, get_delegation_signing_root};
 
 use crate::constants::{INCLUSION_CONSTRAINT_TYPE, MAX_CONSTRAINTS_PER_SLOT};
-use crate::proofs::{InclusionProof, TransactionTrieBuilder};
+use crate::proofs::{InclusionProof, verify_constraints};
 use crate::storage::{DelegationsDbExt, LookaheadDbExt};
 use crate::types::InclusionPayload;
 
@@ -132,11 +132,7 @@ pub fn handle_proof_validation(
 
 	// We then verify the validity of the proofs
 	// For now we assume all constraints are inclusion constraints
-	let transactions = block_request.transactions()?;
-
-	// Reconstruct transaction trie and verify merkle inclusion proofs
-	let mut builder = TransactionTrieBuilder::build(&transactions)?;
-	builder.verify_batch(&block_request.proofs)?;
+	verify_constraints(&block_request.message, &block_request.proofs)?;
 
 	info!("Proofs verified successfully");
 

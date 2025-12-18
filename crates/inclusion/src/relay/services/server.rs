@@ -205,9 +205,9 @@ impl ConstraintsApi for RelayServer {
 		// Validate the proofs
 		handle_proof_validation(&block_request, signed_constraints)?;
 
-		debug!("submitting block request to downstream relay");
 		// Make the legacy submit block request to the downnstream relay
-		self.state.downstream_relay_client.submit_block(block_request, headers).await?;
+		let block = block_request.into_block_request();
+		self.state.downstream_relay_client.submit_block(block, headers).await?;
 
 		Ok(())
 	}

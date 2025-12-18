@@ -1,5 +1,6 @@
 pub mod api;
 pub mod client;
+pub mod helpers;
 pub mod metrics;
 pub mod proxy;
 pub mod routes;

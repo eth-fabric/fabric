@@ -20,8 +20,6 @@ pub async fn proxy_handler<A>(State(state): State<Arc<A>>, req: Request) -> Resu
 where
 	A: ProxyState,
 {
-	info!("proxying request to downstream relay");
-
 	let method = req.method().clone();
 	let uri = req.uri().clone();
 	let path = uri.path();
