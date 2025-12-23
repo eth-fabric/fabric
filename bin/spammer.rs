@@ -1,7 +1,7 @@
 use alloy::consensus::{SignableTransaction, Signed, TxEnvelope};
 use alloy::eips::eip2718::Encodable2718;
 use alloy::network::{Ethereum, TransactionBuilder};
-use alloy::primitives::{Address, Bytes, ChainId, U256};
+use alloy::primitives::{Address, Bytes, U256};
 use alloy::providers::{Provider, ProviderBuilder};
 use alloy::signers::{SignerSync, local::PrivateKeySigner};
 use commitments::client::CommitmentsHttpClient;
@@ -36,19 +36,8 @@ struct SpammerConfig {
 	interval_secs: u64,
 	/// Slasher contract address (optional, random if not provided)
 	slasher_address: Option<String>,
-	/// Chain ID for transactions
+	/// Chain spec
 	chain: Chain,
-}
-
-impl SpammerConfig {
-	fn chain_id(&self) -> ChainId {
-		match self.chain.to_string().to_lowercase().as_str() {
-			"mainnet" => 1,
-			"hoodi" => 560048,
-			"anvil" => 31337,
-			_ => panic!("Invalid chain name: {}", self.chain),
-		}
-	}
 }
 
 /// Generate a valid signed transaction
@@ -59,7 +48,7 @@ async fn generate_signed_transaction(config: &SpammerConfig, signer: &PrivateKey
 	let execution_client = ProviderBuilder::new().network::<Ethereum>().connect_http(execution_client_url);
 
 	let nonce = execution_client.get_transaction_count(signer.address()).await?;
-	let chain_id = config.chain_id();
+	let chain_id = config.chain.id().to::<u64>();
 
 	let latest_block = execution_client
 		.get_block_by_number(alloy::eips::BlockNumberOrTag::Latest)

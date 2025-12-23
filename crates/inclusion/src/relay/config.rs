@@ -1,9 +1,10 @@
+use commit_boost::prelude::Chain;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RelayConfig {
-	/// Chain name
-	pub chain: String,
+	/// Chain spec (either name or path to spec file)
+	pub chain: Chain,
 
 	/// Host of the Relay server (constraints API)
 	pub host: String,

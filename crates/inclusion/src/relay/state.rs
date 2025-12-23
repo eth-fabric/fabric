@@ -43,14 +43,7 @@ impl ProxyState for RelayState {
 
 impl RelayState {
 	pub fn new(db: DatabaseContext, config: RelayConfig) -> Self {
-		let chain = match config.chain.to_string().to_lowercase().as_str() {
-			"mainnet" => Chain::Mainnet,
-			"sepolia" => Chain::Sepolia,
-			"hoodi" => Chain::Hoodi,
-			"holesky" => Chain::Holesky,
-			_ => panic!("Invalid chain name: {}", config.chain),
-		};
-
+		let chain = config.chain;
 		let host = config.host;
 		let port = config.port;
 

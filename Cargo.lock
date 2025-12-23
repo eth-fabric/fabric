@@ -1759,7 +1759,7 @@ dependencies = [
 [[package]]
 name = "cb-cli"
 version = "0.8.1-rc.1"
-source = "git+https://github.com/Commit-Boost/commit-boost-client?branch=fabric#e606273dd8796a91fa197ef75b39c2e2897dfb7f"
+source = "git+https://github.com/JasonVranek/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
 dependencies = [
  "cb-common",
  "clap",
@@ -1772,7 +1772,7 @@ dependencies = [
 [[package]]
 name = "cb-common"
 version = "0.8.1-rc.1"
-source = "git+https://github.com/Commit-Boost/commit-boost-client?branch=fabric#e606273dd8796a91fa197ef75b39c2e2897dfb7f"
+source = "git+https://github.com/JasonVranek/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
 dependencies = [
  "aes 0.8.4",
  "alloy",
@@ -1819,7 +1819,7 @@ dependencies = [
 [[package]]
 name = "cb-metrics"
 version = "0.8.1-rc.1"
-source = "git+https://github.com/Commit-Boost/commit-boost-client?branch=fabric#e606273dd8796a91fa197ef75b39c2e2897dfb7f"
+source = "git+https://github.com/JasonVranek/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
 dependencies = [
  "axum 0.8.7",
  "cb-common",
@@ -1833,7 +1833,7 @@ dependencies = [
 [[package]]
 name = "cb-pbs"
 version = "0.8.1-rc.1"
-source = "git+https://github.com/Commit-Boost/commit-boost-client?branch=fabric#e606273dd8796a91fa197ef75b39c2e2897dfb7f"
+source = "git+https://github.com/JasonVranek/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
 dependencies = [
  "alloy",
  "async-trait",
@@ -1859,7 +1859,7 @@ dependencies = [
 [[package]]
 name = "cb-signer"
 version = "0.8.1-rc.1"
-source = "git+https://github.com/Commit-Boost/commit-boost-client?branch=fabric#e606273dd8796a91fa197ef75b39c2e2897dfb7f"
+source = "git+https://github.com/JasonVranek/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
 dependencies = [
  "alloy",
  "axum 0.8.7",
@@ -2064,7 +2064,7 @@ dependencies = [
 [[package]]
 name = "commit-boost"
 version = "0.8.1-rc.1"
-source = "git+https://github.com/Commit-Boost/commit-boost-client?branch=fabric#e606273dd8796a91fa197ef75b39c2e2897dfb7f"
+source = "git+https://github.com/JasonVranek/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
 dependencies = [
  "cb-cli",
  "cb-common",
