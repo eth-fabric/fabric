@@ -7,13 +7,15 @@ use axum::{
 	response::IntoResponse,
 	routing::{get, post},
 };
+use axum_reverse_proxy::ReverseProxy;
+use reqwest::Client;
 use tracing::{error, info};
 
 use crate::api::ConstraintsApi;
 use crate::metrics::server_http_metrics;
-use crate::proxy::{ProxyState, proxy_handler};
 use crate::routes;
 use crate::types::{AuthorizationContext, SignedConstraints, SignedDelegation, SubmitBlockRequestWithProofs};
+
 
 /// Build an Axum router for the Constraints REST API,
 /// using any implementation of `ConstraintsApi`.
@@ -34,6 +36,11 @@ where
 		.with_state(state)
 }
 
+pub trait ProxyState: Send + Sync + 'static {
+    fn server_url(&self) -> &str;
+    fn http_client(&self) -> &Client;
+}
+
 /// Build an Axum router for the Constraints REST API with a proxy fallback,
 /// using any implementation of `ConstraintsApi` and `ProxyState`.
 pub fn build_constraints_router_with_proxy<A>(api: A) -> Router
@@ -41,6 +48,9 @@ where
 	A: ConstraintsApi + ProxyState,
 {
 	let state = Arc::new(api);
+
+	// This forwards every path and query to the downstream server URL.
+    let proxy = ReverseProxy::new("/", state.server_url());
 
 	Router::new()
 		.route(routes::HEALTH, get(health::<A>))
@@ -50,7 +60,7 @@ where
 		.route(routes::DELEGATION, post(post_delegation::<A>))
 		.route(routes::DELEGATIONS_SLOT, get(get_delegations::<A>))
 		.route(routes::BLOCKS_WITH_PROOFS, post(post_blocks_with_proofs::<A>))
-		.fallback(proxy_handler::<A>)
+		.fallback_service(proxy)
 		.with_state(state)
 }
 

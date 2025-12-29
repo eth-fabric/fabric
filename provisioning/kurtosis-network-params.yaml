@@ -16,7 +16,6 @@ participants:
     count: 1
     validator_count: 0
     el_log_level: warn # options: error, warn, info, debug, trace
-    # --datadir will default to "/data/reth/execution-data"
 
 network_params:
   network: kurtosis # Fresh local devnet (don't want to sync with hoodi)
@@ -52,3 +51,6 @@ mev_type: flashbots
 additional_services:
   - dora
   - blockscout
+
+# Needed for rbuilder to access reth data directory
+persistent: true

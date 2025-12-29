@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use axum::http::HeaderMap;
 use constraints::{
 	api::ConstraintsApi,
-	proxy::ProxyState,
+	server::ProxyState,
 	types::{
 		AuthorizationContext, ConstraintCapabilities, ConstraintsResponse, DelegationsResponse, SignedConstraints,
 		SignedDelegation, SubmitBlockRequestWithProofs,

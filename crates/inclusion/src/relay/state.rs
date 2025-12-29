@@ -2,7 +2,7 @@ use commit_boost::prelude::Chain;
 use reqwest::{Client, Url};
 
 use common::storage::DatabaseContext;
-use constraints::{proxy::ProxyState, types::ConstraintCapabilities};
+use constraints::{server::ProxyState, types::ConstraintCapabilities};
 use lookahead::{
 	beacon_client::{BeaconApiClient, ReqwestClient},
 	types::BeaconApiConfig,
