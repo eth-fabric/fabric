@@ -39,6 +39,8 @@ clap = { version = "4.5", features = ["derive"] }
 hex = "0.4"
 axum = { version = "0.8", features = ["macros", "multipart"] }
 axum-reverse-proxy = { version = "1.0.0", features = ["native-tls"] }
+tower = "0.5.2"
+tower-http = { version = "0.6", features = ["trace"] }
 reqwest = { version = "0.12.4", features = ["json", "rustls-tls"] }
 async-trait = "0.1.89"
 tempfile = "3.8"

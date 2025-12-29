@@ -1,21 +1,23 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use axum::{
 	Json, Router,
+	body::Body,
 	extract::{Path, State},
-	http::{HeaderMap, StatusCode},
+	http::{HeaderMap, Request, StatusCode},
 	response::IntoResponse,
 	routing::{get, post},
 };
 use axum_reverse_proxy::ReverseProxy;
 use reqwest::Client;
-use tracing::{error, info};
+use tower::ServiceBuilder;
+use tower_http::trace::TraceLayer;
+use tracing::{Level, Span, error, info};
 
 use crate::api::ConstraintsApi;
 use crate::metrics::server_http_metrics;
 use crate::routes;
 use crate::types::{AuthorizationContext, SignedConstraints, SignedDelegation, SubmitBlockRequestWithProofs};
-
 
 /// Build an Axum router for the Constraints REST API,
 /// using any implementation of `ConstraintsApi`.
@@ -37,9 +39,12 @@ where
 }
 
 pub trait ProxyState: Send + Sync + 'static {
-    fn server_url(&self) -> &str;
-    fn http_client(&self) -> &Client;
+	fn server_url(&self) -> &str;
+	fn http_client(&self) -> &Client;
 }
+
+#[derive(Clone)]
+struct DownstreamUrl(String);
 
 /// Build an Axum router for the Constraints REST API with a proxy fallback,
 /// using any implementation of `ConstraintsApi` and `ProxyState`.
@@ -48,9 +53,44 @@ where
 	A: ConstraintsApi + ProxyState,
 {
 	let state = Arc::new(api);
+	let downstream_url = state.server_url().to_string();
 
 	// This forwards every path and query to the downstream server URL.
-    let proxy = ReverseProxy::new("/", state.server_url());
+	let proxy = ReverseProxy::new("/", downstream_url.as_str());
+
+	// Add logging to proxy requests
+	let proxy = ServiceBuilder::new()
+		.map_request(move |mut req: Request<Body>| {
+			let path = req.uri().path();
+			let query = req.uri().query().map(|q| format!("?{q}")).unwrap_or_default();
+			let downstream_full_url = format!("{}{}{}", downstream_url.as_str(), path, query);
+
+			req.extensions_mut().insert(DownstreamUrl(downstream_full_url));
+			req
+		})
+		.layer(
+			TraceLayer::new_for_http()
+				.make_span_with(|req: &Request<_>| {
+					let downstream =
+						req.extensions().get::<DownstreamUrl>().map(|d| d.0.as_str()).unwrap_or("<missing>");
+
+					tracing::span!(
+						Level::INFO,
+						"proxy",
+						method = %req.method(),
+						uri = %req.uri(),
+						downstream = %downstream,
+					)
+				})
+				.on_response(|res: &axum::http::Response<_>, latency: Duration, _span: &Span| {
+					info!(
+						status = %res.status(),
+						latency_ms = latency.as_millis(),
+						"proxied"
+					);
+				}),
+		)
+		.service(proxy);
 
 	Router::new()
 		.route(routes::HEALTH, get(health::<A>))
