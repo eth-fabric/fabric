@@ -10,15 +10,6 @@ participants:
     validator_count: 4
     supernode: true
 
-  # For rbuilder
-  - el_type: reth
-    cl_type: lighthouse 
-    cl_extra_params:
-      - "--always-prepare-payload"
-    count: 1
-    validator_count: 0
-    el_log_level: warn # options: error, warn, info, debug, trace
-
 network_params:
   network: kurtosis # Fresh local devnet (don't want to sync with hoodi)
   network_id: "3151908" # Kurtosis chain ID
