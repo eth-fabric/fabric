@@ -49,7 +49,7 @@ impl ConstraintManager {
 				match self.state.db.signed_constraints_finalized(target_slot) {
 					Ok(true) => {
 						// Sleep for a longer interval since we don't need to process this slot
-						tokio::time::sleep(Duration::from_secs(1)).await;
+						tokio::time::sleep(Duration::from_secs(CONSTRAINT_TRIGGER_OFFSET as u64)).await;
 						return Ok(());
 					}
 					Ok(false) => {

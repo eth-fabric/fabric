@@ -8,7 +8,7 @@ use crate::constants::LOOKAHEAD_WINDOW_SIZE;
 use crate::gateway::state::GatewayState;
 use crate::storage::DelegationsDbExt;
 use constraints::client::ConstraintsClient;
-use lookahead::utils::current_slot;
+use lookahead::utils::{current_slot, slot_to_epoch};
 
 /// Delegation manager that monitors delegated slots
 pub struct DelegationManager {
@@ -67,7 +67,7 @@ impl DelegationManager {
 			}
 		}
 
-		info!("{} delegations in the current epoch", count);
+		info!("{} delegations in epochs {}-{}", count, slot_to_epoch(current_slot), slot_to_epoch(current_slot) + 1);
 
 		Ok(())
 	}
