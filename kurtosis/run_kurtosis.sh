@@ -27,7 +27,10 @@ docker cp $(docker ps -qf "name=el-2-reth-builder-lighthouse"):/network-configs/
 # Download a copy of the proposer keystores
 kurtosis files download preconf-testnet 1-lighthouse-geth-0-3 /tmp/keystores
 
-# # Clean any previous fabric databases
+# Get the volume name from the kurtosis builder's reth
+export RETH_VOLUME=$(docker volume ls -q | grep el-2-reth-builder-lighthouse)
+
+# Clean any previous fabric databases
 rm -r /tmp/rocksdb
 
 # Setup the configs

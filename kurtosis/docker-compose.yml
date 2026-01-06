@@ -6,6 +6,7 @@ x-bin-base: &bin-base
 services:
   gateway:
     <<: *bin-base
+    container_name: gateway
     image: fabric/gateway:${VERSION:-dev}
     env_file:
       - ../config/docker/gateway.env
@@ -21,6 +22,7 @@ services:
 
   relay:
     <<: *bin-base
+    container_name: constraints-server
     image: fabric/relay:${VERSION:-dev}
     env_file:
       - ../config/docker/relay.env
@@ -28,9 +30,11 @@ services:
       - ../config/docker/relay.toml:/app/config.toml:ro
       - /tmp/rocksdb:/app/rocksdb
     expose:
-      - "9999"
+      - "9998"
+    ports:
+      - "9998:9998"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9999/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9998/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -38,6 +42,7 @@ services:
 
   proposer:
     <<: *bin-base
+    container_name: proposer-delegation-module
     image: fabric/proposer:${VERSION:-dev}
     env_file:
       - ../config/docker/proposer.env
@@ -82,3 +87,28 @@ services:
       - ../data/keystores/secrets:/app/data/keystores/secrets:ro
       - ../data/proxy:/app/data/proxy
 
+  constraints-builder:
+    <<: *bin-base
+    image: rbuilder:latest
+    container_name: constraints-builder
+    environment:
+      - COINBASE_SECRET_KEY=0x53321db7c1e331d93a11a41d16f004d7ff63972ec8ec7c25db329728ceeb1710
+    volumes:
+      - ../../constraints_builder/docker/config/constraints-builder-docker-config.toml:/app/config.toml:ro
+      - ../../constraints_builder/docker/config/blocklist.json:/app/blocklist.json:ro
+      - /tmp/reth-genesis.json:/app/genesis.json:ro
+      - reth_datadir:/app/reth_datadir
+    # ports:
+    #   - "60600:60600"  # Full telemetry server
+    #   - "60610:60610"  # Redacted telemetry
+    #   - "8645:8645"    # JSON-RPC server
+    # extra_hosts:
+      # - "host.docker.internal:host-gateway"
+    depends_on:
+      - relay
+    command: ["run", "/app/config.toml"]
+
+volumes:
+  reth_datadir:
+    external: true
+    name: ${RETH_VOLUME}

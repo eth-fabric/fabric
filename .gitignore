@@ -4,3 +4,4 @@ config/docker
 data/proxy
 data/rocksdb
 build
+*.bak
