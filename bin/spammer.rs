@@ -32,8 +32,8 @@ struct SpammerConfig {
 	execution_client_host: String,
 	/// Execution client port
 	execution_client_port: u16,
-	/// Interval between requests in seconds (only used in continuous mode)
-	interval_secs: u64,
+	/// Interval between requests in milliseconds (only used in continuous mode)
+	interval_ms: u64,
 	/// Slasher contract address (optional, random if not provided)
 	slasher_address: Option<String>,
 	/// Chain spec
@@ -72,7 +72,7 @@ async fn generate_signed_transaction(config: &SpammerConfig, signer: &PrivateKey
 		.value(U256::from(1))
 		.gas_limit(21000)
 		.nonce(nonce)
-		.max_priority_fee_per_gas(1)
+		.max_priority_fee_per_gas(10_000_000_000) // 10 gwei
 		.max_fee_per_gas(max_fee_per_gas.into())
 		.with_chain_id(chain_id)
 		.build_1559()?;
@@ -149,9 +149,9 @@ async fn run_one_shot(config: &SpammerConfig, signer: &PrivateKeySigner) -> Resu
 
 /// Run in continuous mode
 async fn run_continuous(config: &SpammerConfig, signer: &PrivateKeySigner) -> Result<()> {
-	info!("Running in continuous mode (interval: {}s)", config.interval_secs);
+	info!("Running in continuous mode (interval: {}ms)", config.interval_ms);
 
-	let mut interval = time::interval(Duration::from_secs(config.interval_secs));
+	let mut interval = time::interval(Duration::from_millis(config.interval_ms));
 
 	let mut shutdown = Box::pin(common::utils::wait_for_signal());
 	loop {

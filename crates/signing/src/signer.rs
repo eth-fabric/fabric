@@ -28,7 +28,7 @@ pub async fn call_proxy_ecdsa_signer(
 	let proxy_response_ecdsa = signer_client
 		.request_proxy_signature_ecdsa(proxy_request_ecdsa)
 		.await
-		.wrap_err("Failed to request proxy signature from signer service")?;
+		.map_err(|e| eyre!("Failed to request proxy signature from signer service: {:?}", e))?;
 
 	match verify_proposer_commitment_signature_ecdsa_for_message(
 		chain,

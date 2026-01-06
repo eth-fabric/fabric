@@ -76,7 +76,7 @@ pub struct SimulationConfig {
 
 	// Spammer specific
 	spammer_mode: String,
-	spammer_interval_secs: u64,
+	spammer_interval_ms: u64,
 	slasher_address: String,
 }
 
@@ -260,7 +260,7 @@ impl SimulationBuilder {
 
 	pub fn write_env_files(&mut self, docker: bool) -> Result<&mut Self> {
 		let signer_url = if docker {
-			"http://gateway-signer:20000".to_string()
+			format!("http://gateway-signer:{port}", port = self.config.gateway_signer_port).to_string()
 		} else {
 			self.gateway_signer_url.clone().unwrap().to_string()
 		};
@@ -285,7 +285,7 @@ impl SimulationBuilder {
 
 		// Proposer .env file
 		let signer_url = if docker {
-			"http://proposer-signer:20000".to_string()
+			format!("http://proposer-signer:{port}", port = self.config.proposer_signer_port).to_string()
 		} else {
 			self.proposer_signer_url.clone().unwrap().to_string()
 		};
@@ -404,7 +404,7 @@ impl SimulationBuilder {
 		let gateway_signer_config_path = self.gateway_signer_cb_config.clone().unwrap();
 
 		// Force correct CB_CONFIG path since docker changes
-		let path = if docker { "config/docker/signer.toml" } else { gateway_signer_config_path.as_str() };
+		let path = if docker { "config/docker/gateway-signer.toml" } else { gateway_signer_config_path.as_str() };
 		unsafe {
 			std::env::set_var("CB_CONFIG", path);
 		}
@@ -469,6 +469,8 @@ env_file = "n/a""#,
 		let mut doc = self.cb_config(true);
 
 		let relay_host = if docker { "relay" } else { self.config.relay_host.as_str() };
+		let execution_client_host =
+			if docker { "host.docker.internal" } else { self.config.execution_client_host.as_str() };
 
 		doc.push_str(&format!(
 			r#"
@@ -531,7 +533,7 @@ gateway_public_key = "{gateway_public_key}"
 			db_path = self.gateway_db_path.clone().unwrap(),
 			relay_host = relay_host,
 			relay_port = self.config.relay_port,
-			execution_client_host = self.config.execution_client_host,
+			execution_client_host = execution_client_host,
 			execution_client_port = self.config.execution_client_port,
 			// constraints_receivers = self.config.constraints_receivers.join(","),
 			module_signing_id = self.config.gateway_module_signing_id,
@@ -549,7 +551,7 @@ gateway_public_key = "{gateway_public_key}"
 		let mut doc = self.cb_config(false);
 
 		let relay_host = if docker { "relay" } else { self.config.relay_host.as_str() };
-		let beacon_api_host = if docker { "beacon-mock" } else { self.config.beacon_host.as_str() };
+		let beacon_api_host = if docker { "host.docker.internal" } else { self.config.beacon_host.as_str() };
 
 		doc.push_str(&format!(
 			r#"
@@ -610,7 +612,7 @@ module_signing_id = "{module_signing_id}"
 	}
 
 	pub fn write_relay_config(&mut self, docker: bool) -> Result<&mut Self> {
-		let beacon_api_host = if docker { "beacon-mock" } else { self.config.beacon_host.as_str() };
+		let beacon_api_host = if docker { "host.docker.internal" } else { self.config.beacon_host.as_str() };
 		let chain_toml = serialize_chain_inline(&self.config.chain);
 
 		let doc = format!(
@@ -647,6 +649,8 @@ downstream_relay_port = {downstream_relay_port}
 
 	pub fn write_spammer_config(&mut self, docker: bool) -> Result<&mut Self> {
 		let gateway_host = if docker { "gateway" } else { self.config.gateway_host.as_str() };
+		let execution_client_host =
+			if docker { "host.docker.internal" } else { self.config.execution_client_host.as_str() };
 		let chain_toml = serialize_chain_inline(&self.config.chain);
 
 		let doc = format!(
@@ -660,16 +664,16 @@ gateway_host = "{gateway_host}"
 gateway_port = {gateway_port}
 execution_client_host = "{execution_client_host}"
 execution_client_port = {execution_client_port}
-interval_secs = {interval_secs}
+interval_ms = {interval_ms}
 slasher_address = "{slasher_address}"
 "#,
 			mode = self.config.spammer_mode,
 			chain = chain_toml.trim(),
 			gateway_host = gateway_host,
 			gateway_port = self.config.gateway_port,
-			execution_client_host = self.config.execution_client_host,
+			execution_client_host = execution_client_host,
 			execution_client_port = self.config.execution_client_port,
-			interval_secs = self.config.spammer_interval_secs,
+			interval_ms = self.config.spammer_interval_ms,
 			slasher_address = self.config.slasher_address,
 		);
 

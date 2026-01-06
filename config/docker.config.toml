@@ -2,7 +2,7 @@
 # This file contains configuration settings for the simulation-setup binary
 
 # Chain name
-chain = "Hoodi"
+chain = { genesis_time_secs = 1767736822, slot_time_secs = 12, genesis_fork_version = "0x10000038", chain_id = 3151908}
 
 # Module names
 gateway_module_name = "gateway-module"
@@ -13,14 +13,18 @@ gateway_module_signing_id = "0x1111111111111111111111111111111111111111111111111
 proposer_module_signing_id = "0x2222222222222222222222222222222222222222222222222222222222222222"
 
 # Database root
-db_path = "./data/rocksdb"
+db_path = "./rocksdb"
 
 # Key paths
 gateway_default_bls_key = "0xb3a22e4a673ac7a153ab5b3c17a4dbef55f7e47210b20c0cbb0e66df5b36bb49ef808577610b034172e955d2312a61b9"
+gateway_proxy_key_dir = "./data/proxy"
+gateway_keys_path = "./data/keystores/keys"
+gateway_secrets_path = "./data/keystores/secrets"
+
 proposer_consensus_key = "0x883827193f7627cd04e621e1e8d56498362a52b2a30c9a1c72036eb935c4278dee23d38a24d2f7dda62689886f0c39f4"
-proxy_key_dir = "./data/proxy"
-keys_path = "./data/keystores/keys"
-secrets_path = "./data/keystores/secrets"
+proposer_proxy_key_dir = "./data/proxy"
+proposer_keys_path = "./data/keystores/keys"
+proposer_secrets_path = "./data/keystores/secrets"
 
 # Key that is prepended to the relay URL used by commit-boost
 # Currently this is unused by the constraints server
@@ -31,15 +35,15 @@ relay_bls_key = "0xafa4c6985aa049fb79dd37010438cfebeb0f2bd42b115b89dd678dab0670c
 proposer_signer_host = "0.0.0.0"
 proposer_signer_port = 20000
 gateway_signer_host = "0.0.0.0"
-gateway_signer_port = 20000
+gateway_signer_port = 20001
 
 # Location of (unauthenticated) Beacon Node API
 beacon_host = "0.0.0.0"
-beacon_port = 5052
+beacon_port = 62668
 
 # Location of Execution Client JSON-RPC
 execution_client_host = "0.0.0.0"
-execution_client_port = 8545
+execution_client_port = 62655
 
 # Where Gateway will listen for Commitments JSON-RPC requests
 gateway_host = "0.0.0.0"
@@ -55,7 +59,7 @@ relay_port = 9999
 
 # Where Relay will proxy unhandled requests to / forward block requests to after verifying proofs
 downstream_relay_host = "0.0.0.0"
-downstream_relay_port = 6666
+downstream_relay_port = 62682
 
 # Gateway specific
 constraints_receivers = []
@@ -69,7 +73,7 @@ lookahead_update_interval = 30
 
 # Spammer specific
 spammer_mode = "continuous"
-spammer_interval_secs = 2
+spammer_interval_ms = 100
 slasher_address = "0x1234567890123456789012345678901234567890"
 
 # --- Logging and metrics ----

@@ -1,0 +1,84 @@
+x-bin-base: &bin-base
+  restart: unless-stopped
+  environment:
+    - RUST_LOG=${RUST_LOG:-info}
+
+services:
+  gateway:
+    <<: *bin-base
+    image: fabric/gateway:${VERSION:-dev}
+    env_file:
+      - ../config/docker/gateway.env
+    volumes:
+      - ../config/docker/gateway.toml:/app/config.toml:ro
+      - /tmp/rocksdb:/app/rocksdb
+    expose:
+      - "8080"
+      - "8082"
+    depends_on:
+      - relay
+      - gateway-signer
+
+  relay:
+    <<: *bin-base
+    image: fabric/relay:${VERSION:-dev}
+    env_file:
+      - ../config/docker/relay.env
+    volumes:
+      - ../config/docker/relay.toml:/app/config.toml:ro
+      - /tmp/rocksdb:/app/rocksdb
+    expose:
+      - "9999"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9999/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  proposer:
+    <<: *bin-base
+    image: fabric/proposer:${VERSION:-dev}
+    env_file:
+      - ../config/docker/proposer.env
+    volumes:
+      - ../config/docker/proposer.toml:/app/config.toml:ro
+      - /tmp/rocksdb:/app/rocksdb
+    depends_on:
+      - proposer-signer
+      - relay
+
+  spammer:
+    <<: *bin-base
+    image: fabric/spammer:${VERSION:-dev}
+    env_file:
+      - ../config/docker/spammer.env
+    volumes:
+      - ../config/docker/spammer.toml:/app/config.toml:ro
+    environment:
+      - SENDER_PRIVATE_KEY=0xbcdf20249abf0ed6d944c0288fad489e33f66b3960d9e6229c1cd214ed3bbe31
+    depends_on:
+      - gateway
+
+  proposer-signer:
+    <<: *bin-base
+    image: fabric/signer:${VERSION:-dev}
+    env_file:
+      - ../config/docker/proposer-signer.env
+    volumes:
+      - ../config/docker/proposer-signer.toml:/app/config.toml:ro
+      - /tmp/keystores/keys:/app/data/keystores/keys:ro
+      - /tmp/keystores/secrets:/app/data/keystores/secrets:ro
+      - ../data/proxy:/app/data/proxy
+
+  gateway-signer:
+    <<: *bin-base
+    image: fabric/signer:${VERSION:-dev}
+    env_file:
+      - ../config/docker/gateway-signer.env
+    volumes:
+      - ../config/docker/gateway-signer.toml:/app/config.toml:ro
+      - ../data/keystores/keys:/app/data/keystores/keys:ro
+      - ../data/keystores/secrets:/app/data/keystores/secrets:ro
+      - ../data/proxy:/app/data/proxy
+
