@@ -6,7 +6,8 @@ participants:
 
   # CL
     cl_type: lighthouse
-    count: 1
+    # **Important:** You need at least 2 participants (`count: 2`) for the Kurtosis nodes to accept external peer connections.
+    count: 2
     validator_count: 4
     supernode: true
 
@@ -42,8 +43,9 @@ mev_params:
 mev_type: flashbots
 
 additional_services:
-  - dora
+  # Block explorer
   - blockscout
-
-# Needed for rbuilder to access reth data directory
-persistent: true
+  # To submit normal transactions
+  - spamoor
+  # Enable Apache to serve bootnode info (ENR/enode)
+  - apache

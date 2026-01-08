@@ -9,26 +9,28 @@ services:
     container_name: gateway
     image: fabric/gateway:${VERSION:-dev}
     env_file:
-      - ../config/docker/gateway.env
+      - ${REPO_ROOT}/config/docker/gateway.env
     volumes:
-      - ../config/docker/gateway.toml:/app/config.toml:ro
-      - /tmp/rocksdb:/app/rocksdb
+      - ${REPO_ROOT}/config/docker/gateway.toml:/app/config.toml:ro
+      - ${OUTPUT_DIR}/rocksdb:/app/rocksdb
     expose:
       - "8080"
       - "8082"
     depends_on:
       - relay
       - gateway-signer
+    networks:
+      - kurtosis
 
   relay:
     <<: *bin-base
     container_name: constraints-server
     image: fabric/relay:${VERSION:-dev}
     env_file:
-      - ../config/docker/relay.env
+      - ${REPO_ROOT}/config/docker/relay.env
     volumes:
-      - ../config/docker/relay.toml:/app/config.toml:ro
-      - /tmp/rocksdb:/app/rocksdb
+      - ${REPO_ROOT}/config/docker/relay.toml:/app/config.toml:ro
+      - ${OUTPUT_DIR}/rocksdb:/app/rocksdb
     expose:
       - "9998"
     ports:
@@ -39,42 +41,50 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
+    networks:
+      - kurtosis
 
   proposer:
     <<: *bin-base
     container_name: proposer-delegation-module
     image: fabric/proposer:${VERSION:-dev}
     env_file:
-      - ../config/docker/proposer.env
+      - ${REPO_ROOT}/config/docker/proposer.env
     volumes:
-      - ../config/docker/proposer.toml:/app/config.toml:ro
-      - /tmp/rocksdb:/app/rocksdb
+      - ${REPO_ROOT}/config/docker/proposer.toml:/app/config.toml:ro
+      - ${OUTPUT_DIR}/rocksdb:/app/rocksdb
     depends_on:
       - proposer-signer
       - relay
+    networks:
+      - kurtosis
 
   spammer:
     <<: *bin-base
     image: fabric/spammer:${VERSION:-dev}
     env_file:
-      - ../config/docker/spammer.env
+      - ${REPO_ROOT}/config/docker/spammer.env
     volumes:
-      - ../config/docker/spammer.toml:/app/config.toml:ro
+      - ${REPO_ROOT}/config/docker/spammer.toml:/app/config.toml:ro
     environment:
       - SENDER_PRIVATE_KEY=0xbcdf20249abf0ed6d944c0288fad489e33f66b3960d9e6229c1cd214ed3bbe31
     depends_on:
       - gateway
+    networks:
+      - kurtosis
 
   proposer-signer:
     <<: *bin-base
     image: fabric/signer:${VERSION:-dev}
     env_file:
-      - ../config/docker/proposer-signer.env
+      - ${REPO_ROOT}/config/docker/proposer-signer.env
     volumes:
-      - ../config/docker/proposer-signer.toml:/app/config.toml:ro
-      - /tmp/keystores/keys:/app/data/keystores/keys:ro
-      - /tmp/keystores/secrets:/app/data/keystores/secrets:ro
-      - ../data/proxy:/app/data/proxy
+      - ${REPO_ROOT}/config/docker/proposer-signer.toml:/app/config.toml:ro
+      - ${OUTPUT_DIR}/validator_keys:/app/data/keystores/keys:ro
+      - ${OUTPUT_DIR}/validator_secrets:/app/data/keystores/secrets:ro
+      - ${REPO_ROOT}/data/proxy:/app/data/proxy
+    networks:
+      - kurtosis
 
   gateway-signer:
     <<: *bin-base
@@ -82,33 +92,45 @@ services:
     env_file:
       - ../config/docker/gateway-signer.env
     volumes:
-      - ../config/docker/gateway-signer.toml:/app/config.toml:ro
-      - ../data/keystores/keys:/app/data/keystores/keys:ro
-      - ../data/keystores/secrets:/app/data/keystores/secrets:ro
-      - ../data/proxy:/app/data/proxy
+      - ${REPO_ROOT}/config/docker/gateway-signer.toml:/app/config.toml:ro
+      - ${REPO_ROOT}/data/keystores/keys:/app/data/keystores/keys:ro
+      - ${REPO_ROOT}/data/keystores/secrets:/app/data/keystores/secrets:ro
+      - ${REPO_ROOT}/data/proxy:/app/data/proxy
+    networks:
+      - kurtosis
 
   constraints-builder:
     <<: *bin-base
-    image: rbuilder:latest
+    image: constraints-builder:latest
     container_name: constraints-builder
-    environment:
-      - COINBASE_SECRET_KEY=0x53321db7c1e331d93a11a41d16f004d7ff63972ec8ec7c25db329728ceeb1710
     volumes:
-      - ../../constraints_builder/docker/config/constraints-builder-docker-config.toml:/app/config.toml:ro
-      - ../../constraints_builder/docker/config/blocklist.json:/app/blocklist.json:ro
-      - /tmp/reth-genesis.json:/app/genesis.json:ro
-      - reth_datadir:/app/reth_datadir
-    # ports:
-    #   - "60600:60600"  # Full telemetry server
-    #   - "60610:60610"  # Redacted telemetry
-    #   - "8645:8645"    # JSON-RPC server
-    # extra_hosts:
-      # - "host.docker.internal:host-gateway"
-    depends_on:
-      - relay
-    command: ["run", "/app/config.toml"]
+      - ${SCRIPT_DIR}/data/genesis:/network-configs:ro
+      - ${SCRIPT_DIR}/data/jwt:/jwt:ro
+      - reth-data:/data/reth
+      # todo if the chainspec isn't read properly then I actually need this
+      # - /tmp/reth-genesis.json:/app/genesis.json:ro
+      - ${CONSTRAINTS_BUILDER_CONFIG}:/app/config.toml:ro
+      - ${CONSTRAINTS_BUILDER_BLOCKLIST}:/app/blocklist.json:ro
+    environment:
+      - RUST_BACKTRACE=full
+      - BOOTNODES_EL=${BOOTNODES_EL}
+      - BOOTNODES_CL=${BOOTNODES_CL}
+      - LIBP2P_ADDR=${LIBP2P_ADDR}
+      - TRUSTED_PEER=${TRUSTED_PEER}
+      - FEE_RECIPIENT=${FEE_RECIPIENT}
+      - COINBASE_SECRET_KEY=0x53321db7c1e331d93a11a41d16f004d7ff63972ec8ec7c25db329728ceeb1710
+    ports:
+      - "8545:8545"   # JSON-RPC
+      - "8546:8546"   # WebSocket
+      - "30304:30303" # P2P (use different host port to avoid conflict)
+    networks:
+      - kurtosis
 
 volumes:
-  reth_datadir:
+  reth-data:
+  lighthouse-data:
+  
+networks:
+  kurtosis:
     external: true
-    name: ${RETH_VOLUME}
+    name: ${KURTOSIS_NETWORK:-kt-preconf-testnet}
