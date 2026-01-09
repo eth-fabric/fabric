@@ -31,8 +31,8 @@ extra_data = "🧵 constraints test"
 
 ignore_cancellable_orders = true
 
-# slot_delta_to_start_bidding_ms = -11500
-slot_delta_to_start_bidding_ms = 8000
+slot_delta_to_start_bidding_ms = -11500
+# slot_delta_to_start_bidding_ms = 8000
 
 sbundle_mergeable_signers = []
 live_builders = ["mgp-ordering"]
@@ -45,14 +45,14 @@ root_hash_use_sparse_trie = true
 root_hash_compare_sparse_trie = false
 
 # For constraints client - URL of the constraints server to poll
-constraint_server_url = "http://relay:9998"
+constraint_server_url = "http://constraints-server:9998"
 
 [[relays]]
 name = "Constraints-Server"
 # Same as constraints server port since it proxies
 # Note the test-relay must set it's own port
 # and the constraints server will forward requests
-url = "http://relay:9998"
+url = "http://constraints-server:9998"
 mode = "full"
 max_bid_eth = "0.05"
 

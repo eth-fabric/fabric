@@ -11,3 +11,5 @@ export CONSTRAINTS_BUILDER_CONFIG=../../constraints_builder/docker/config/constr
 export CONSTRAINTS_BUILDER_BLOCKLIST=../../constraints_builder/docker/config/blocklist.json
 
 docker compose down 
+
+kurtosis clean -a

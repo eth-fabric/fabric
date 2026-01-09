@@ -15,6 +15,17 @@
 
 set -e
 
+# Parse command line arguments
+DEV_MODE=false
+for arg in "$@"; do
+    case $arg in
+        --dev)
+            DEV_MODE=true
+            shift
+            ;;
+    esac
+done
+
 export ENCLAVE_NAME="${ENCLAVE_NAME:-preconf-testnet}"
 export SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -25,11 +36,14 @@ export CONSTRAINTS_BUILDER_BLOCKLIST=./blocklist.json
 export FEE_RECIPIENT=0x0000000000000000000000000000000000000000
 
 echo "========================================"
-echo "  Kurtosis + External Sync Setup"
+echo "  Inclusion Preconf Kurtosis Testnet Setup"
 echo "========================================"
 echo "Enclave: ${ENCLAVE_NAME}"
 echo "Script dir: ${SCRIPT_DIR}"
 echo "Repo root: ${REPO_ROOT}"
+if [ "$DEV_MODE" = true ]; then
+    echo "Mode: DEV (skipping Kurtosis teardown/creation)"
+fi
 echo ""
 
 # Step 1: Stop existing Docker Compose services
@@ -39,14 +53,23 @@ cd "${SCRIPT_DIR}"
 docker compose down -v 2>/dev/null || echo "  No existing compose services to stop"
 
 # Step 2: Tear down existing Kurtosis enclave
-echo "[Step 2/11] Tearing down existing Kurtosis enclave..."
-kurtosis enclave rm "${ENCLAVE_NAME}" --force 2>/dev/null || echo "  No existing enclave to remove"
+if [ "$DEV_MODE" = true ]; then
+    echo "[Step 2/11] Skipping Kurtosis teardown (--dev mode)"
+else
+    echo "[Step 2/11] Tearing down existing Kurtosis enclave..."
+    kurtosis enclave rm "${ENCLAVE_NAME}" --force 2>/dev/null || echo "  No existing enclave to remove"
+fi
 
 # Step 3: Run Kurtosis to create the network
-echo ""
-echo "[Step 3/11] Starting Kurtosis network..."
-cd "${REPO_ROOT}"
-kurtosis run github.com/ethpandaops/ethereum-package --enclave "${ENCLAVE_NAME}" --args-file "${SCRIPT_DIR}/kurtosis-network-params.yaml"
+if [ "$DEV_MODE" = true ]; then
+    echo ""
+    echo "[Step 3/11] Skipping Kurtosis network creation (--dev mode)"
+else
+    echo ""
+    echo "[Step 3/11] Starting Kurtosis network..."
+    cd "${REPO_ROOT}"
+    kurtosis run github.com/ethpandaops/ethereum-package --enclave "${ENCLAVE_NAME}" --args-file "${SCRIPT_DIR}/kurtosis-network-params.yaml"
+fi
 
 # Step 4: Extract the ports from the Kurtosis network and update the configuration files
 echo ""
@@ -61,13 +84,6 @@ echo ""
 echo "[Step 5/11] Updating chain spec in fabric config..."
 cd "${SCRIPT_DIR}"
 ./get_chain_spec.sh ${ENCLAVE_NAME} ${FABRIC_CONFIG}
-
-# todo if the chainspec isn't read properly then I actually need this
-# Step 6: Make a local copy of the reth chainspec for the rbuilder
-# echo ""
-# echo "[Step 6/6] Making a local copy of the reth chainspec for the rbuilder..."
-# cd "${SCRIPT_DIR}"
-# docker cp $(docker ps -qf "name=el-2-reth-builder-lighthouse"):/network-configs/genesis.json /tmp/reth-genesis.json
 
 # Step 6: Download a copy of the proposer keystores
 echo ""

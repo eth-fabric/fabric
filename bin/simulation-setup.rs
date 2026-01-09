@@ -468,7 +468,7 @@ env_file = "n/a""#,
 	pub fn write_gateway_config(&mut self, docker: bool) -> Result<&mut Self> {
 		let mut doc = self.cb_config(true);
 
-		let relay_host = if docker { "relay" } else { self.config.relay_host.as_str() };
+		let relay_host = if docker { "constraints-server" } else { self.config.relay_host.as_str() };
 		let execution_client_host =
 			if docker { "host.docker.internal" } else { self.config.execution_client_host.as_str() };
 
@@ -550,7 +550,7 @@ gateway_public_key = "{gateway_public_key}"
 	pub fn write_proposer_config(&mut self, docker: bool) -> Result<&mut Self> {
 		let mut doc = self.cb_config(false);
 
-		let relay_host = if docker { "relay" } else { self.config.relay_host.as_str() };
+		let relay_host = if docker { "constraints-server" } else { self.config.relay_host.as_str() };
 		let beacon_api_host = if docker { "host.docker.internal" } else { self.config.beacon_host.as_str() };
 
 		doc.push_str(&format!(
