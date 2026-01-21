@@ -1,4 +1,52 @@
 # ===============================
+# Fabric Justfile
+# ===============================
+#
+# Usage: just <recipe>
+#
+# Run `just --list` to see all available recipes.
+#
+# QUICK START
+# -----------
+# 1. Start a local kurtosis testnet:     just start-testnet
+# 2. Generate simulation config:         just setup-simulation
+# 3. Run individual services locally:    just run-local-<service>
+#
+# AVAILABLE COMMANDS
+# ------------------
+# Local Development:
+#   setup-simulation         Generate config and .env files in config/simulation
+#   run-local-signer         Run local signer module (arg: target env file)
+#   run-local-gateway        Run local gateway module
+#   run-local-proposer       Run local proposer module
+#   run-local-relay          Run local relay
+#   run-local-spammer        Run local spammer
+#   run-local-beacon-mock    Run local mock beacon node
+#
+# Docker:
+#   setup-docker-simulation  Generate config and .env files for Docker
+#   up [VERSION]             Start all dockerized services (default: dev)
+#   down                     Stop all dockerized services
+#   logs <SERVICE>           Follow logs for a specific service
+#
+# Building Images:
+#   build-gateway <version>  Build gateway Docker image
+#   build-relay <version>    Build relay Docker image
+#   build-proposer <version> Build proposer Docker image
+#   build-spammer <version>  Build spammer Docker image
+#   build-signer <version>   Build signer Docker image
+#   build-beacon-mock <ver>  Build beacon-mock Docker image
+#   build-all <version>      Build all images
+#   build-builder            Build constraints_builder image
+#
+# Testnet Management:
+#   restart-testnet          Restart kurtosis testnet
+#   stop-testnet             Stop kurtosis testnet
+#   restart-testnet-docker   Restart docker but keep kurtosis testnet running
+#   inspect-testnet          Inspect kurtosis testnet
+#
+
+# ===============================
 # Local binary execution (without Docker)
 # ===============================
 
@@ -120,3 +168,25 @@ build-all version:
 	just build-spammer {{version}} && \
 	just build-signer {{version}} && \
 	just build-beacon-mock {{version}}
+
+# Build the docker image for the constraints_builder
+build-builder:
+	#!/usr/bin/env bash
+	cd constraints_builder/docker/ && just build
+
+restart-testnet:
+	#!/usr/bin/env bash
+	echo "WARNING: This will fully reset kurtosis testnet and start a new one"
+	cd kurtosis/scripts && ./restart.sh
+
+stop-testnet:
+	#!/usr/bin/env bash
+	cd kurtosis/scripts && ./stop.sh
+
+restart-testnet-docker:
+	#!/usr/bin/env bash
+	echo "WARNING: This will keep kurtosis running and only reset the docker containers"
+	cd kurtosis/scripts && ./restart.sh --docker-only
+
+inspect-testnet:
+	kurtosis enclave inspect preconf-testnet

@@ -9,3 +9,4 @@ kurtosis/network-configs
 kurtosis/data
 kurtosis/jwt
 kurtosis/.env
+kurtosis/scripts/data
