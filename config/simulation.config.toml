@@ -73,7 +73,6 @@ lookahead_check_interval_seconds = 12
 
 # Spammer specific
 spammer_mode = "continuous"
-spammer_interval_ms = 100
 slasher_address = "0x1234567890123456789012345678901234567890"
 
 # --- Logging and metrics ----

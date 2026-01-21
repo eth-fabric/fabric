@@ -2,7 +2,7 @@
 # This file contains configuration settings for the simulation-setup binary
 
 # Chain name
-chain = { genesis_time_secs = 1767740951, slot_time_secs = 12, genesis_fork_version = "0x10000038", chain_id = 3151908}
+chain = { genesis_time_secs = 1768954589, slot_time_secs = 12, genesis_fork_version = "0x10000038", chain_id = 3151908}
 
 # Module names
 gateway_module_name = "gateway-module"
@@ -39,11 +39,11 @@ gateway_signer_port = 20001
 
 # Location of (unauthenticated) Beacon Node API
 beacon_host = "0.0.0.0"
-beacon_port = 57106
+beacon_port = 59658
 
 # Location of Execution Client JSON-RPC
 execution_client_host = "0.0.0.0"
-execution_client_port = 57079
+execution_client_port = 59637
 
 # Where Gateway will listen for Commitments JSON-RPC requests
 gateway_host = "0.0.0.0"
@@ -59,7 +59,7 @@ relay_port = 9998
 
 # Where Relay will proxy unhandled requests to / forward block requests to after verifying proofs
 downstream_relay_host = "host.docker.internal"
-downstream_relay_port = 57119
+downstream_relay_port = 59684
 
 # Gateway specific
 constraints_receivers = []
@@ -73,7 +73,6 @@ lookahead_update_interval = 30
 
 # Spammer specific
 spammer_mode = "continuous"
-spammer_interval_ms = 100
 slasher_address = "0x1234567890123456789012345678901234567890"
 
 # --- Logging and metrics ----

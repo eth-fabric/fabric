@@ -1,7 +1,7 @@
 use alloy::consensus::{SignableTransaction, Signed, TxEnvelope};
 use alloy::eips::eip2718::Encodable2718;
 use alloy::network::{Ethereum, TransactionBuilder};
-use alloy::primitives::{Address, Bytes, U256};
+use alloy::primitives::{Address, Bytes, TxHash, U256};
 use alloy::providers::{Provider, ProviderBuilder};
 use alloy::signers::{SignerSync, local::PrivateKeySigner};
 use commitments::client::CommitmentsHttpClient;
@@ -10,7 +10,6 @@ use lookahead::utils::current_slot_estimate;
 use reqwest::Url;
 use serde::Deserialize;
 use std::time::Duration;
-use tokio::time;
 use tracing::{error, info};
 
 use commit_boost::prelude::Chain;
@@ -18,6 +17,8 @@ use commit_boost::prelude::Chain;
 use commitments::types::{CommitmentRequest, SignedCommitment};
 use inclusion::constants::INCLUSION_COMMITMENT_TYPE;
 use inclusion::types::InclusionPayload;
+
+pub const SLOTS_IN_FUTURE_TO_SEND_COMMITMENT_REQUEST: u64 = 2;
 
 /// Configuration for the spammer
 #[derive(Debug, Deserialize)]
@@ -32,16 +33,14 @@ struct SpammerConfig {
 	execution_client_host: String,
 	/// Execution client port
 	execution_client_port: u16,
-	/// Interval between requests in milliseconds (only used in continuous mode)
-	interval_ms: u64,
 	/// Slasher contract address (optional, random if not provided)
 	slasher_address: Option<String>,
 	/// Chain spec
 	chain: Chain,
 }
 
-/// Generate a valid signed transaction
-async fn generate_signed_transaction(config: &SpammerConfig, signer: &PrivateKeySigner) -> Result<Bytes> {
+/// Generate a valid signed transaction, returning encoded bytes, tx hash, and nonce
+async fn generate_signed_transaction(config: &SpammerConfig, signer: &PrivateKeySigner) -> Result<(Bytes, TxHash, u64)> {
 	// Create execution client
 	let execution_client_url =
 		Url::parse(format!("http://{}:{}", config.execution_client_host, config.execution_client_port).as_str())?;
@@ -72,7 +71,7 @@ async fn generate_signed_transaction(config: &SpammerConfig, signer: &PrivateKey
 		.value(U256::from(1))
 		.gas_limit(21000)
 		.nonce(nonce)
-		.max_priority_fee_per_gas(10_000_000_000) // 10 gwei
+		.max_priority_fee_per_gas(max_fee_per_gas.into())
 		.max_fee_per_gas(max_fee_per_gas.into())
 		.with_chain_id(chain_id)
 		.build_1559()?;
@@ -85,23 +84,26 @@ async fn generate_signed_transaction(config: &SpammerConfig, signer: &PrivateKey
 	let signed_tx = Signed::new_unhashed(tx, signature);
 	let tx_envelope = TxEnvelope::Eip1559(signed_tx);
 
+	// Capture tx hash before encoding
+	let tx_hash = *tx_envelope.tx_hash();
+
 	// RLP encode
 	let mut encoded = Vec::new();
 	tx_envelope.encode_2718(&mut encoded);
 
-	Ok(Bytes::from(encoded))
+	Ok((Bytes::from(encoded), tx_hash, nonce))
 }
 
-/// Create a commitment request
-fn create_commitment_request(config: &SpammerConfig, signed_tx: Bytes) -> Result<CommitmentRequest> {
+/// Create a commitment request, returning the request and target slot
+fn create_commitment_request(config: &SpammerConfig, signed_tx: Bytes) -> Result<(CommitmentRequest, u64)> {
 	// Get current slot
 	let current_slot = current_slot_estimate(config.chain.genesis_time_sec());
 
 	// Send the commitment for a future slot
-	let future_slot = current_slot + 1;
+	let target_slot = current_slot + SLOTS_IN_FUTURE_TO_SEND_COMMITMENT_REQUEST;
 
 	// Create inclusion payload
-	let inclusion_payload = InclusionPayload { slot: future_slot, signed_tx };
+	let inclusion_payload = InclusionPayload { slot: target_slot, signed_tx };
 
 	// ABI encode the payload
 	let payload = inclusion_payload.abi_encode().wrap_err("Failed to encode inclusion payload")?;
@@ -113,7 +115,7 @@ fn create_commitment_request(config: &SpammerConfig, signed_tx: Bytes) -> Result
 		Address::random()
 	};
 
-	Ok(CommitmentRequest { commitment_type: INCLUSION_COMMITMENT_TYPE, payload, slasher })
+	Ok((CommitmentRequest { commitment_type: INCLUSION_COMMITMENT_TYPE, payload, slasher }, target_slot))
 }
 
 /// Send a commitment request via RPC
@@ -125,20 +127,20 @@ async fn send_commitment_request(gateway_url: Url, request: &CommitmentRequest) 
 async fn create_and_send_commitment_request(
 	config: &SpammerConfig,
 	signer: &PrivateKeySigner,
-) -> Result<SignedCommitment> {
+) -> Result<(SignedCommitment, TxHash, u64, u64)> {
 	let gateway_url = Url::parse(format!("http://{}:{}", config.gateway_host, config.gateway_port).as_str())?;
-	let tx = generate_signed_transaction(config, signer).await?;
-	let request = create_commitment_request(config, tx)?;
+	let (tx, tx_hash, nonce) = generate_signed_transaction(config, signer).await?;
+	let (request, target_slot) = create_commitment_request(config, tx)?;
 	let response = send_commitment_request(gateway_url, &request).await?;
-	Ok(response)
+	Ok((response, tx_hash, target_slot, nonce))
 }
 
 /// Run in one-shot mode
 async fn run_one_shot(config: &SpammerConfig, signer: &PrivateKeySigner) -> Result<()> {
 	match create_and_send_commitment_request(config, signer).await {
-		Ok(response) => {
+		Ok((response, tx_hash, target_slot, nonce)) => {
 			info!("Commitment request successful!");
-			info!("Request hash: {:?}", response.commitment.request_hash);
+			info!("Target slot: {}, nonce: {}, tx_hash: {:?}, request_hash: {:?}", target_slot, nonce, tx_hash, response.commitment.request_hash);
 		}
 		Err(e) => {
 			error!("✗ Failed to create and send commitment request: {}", e);
@@ -147,25 +149,40 @@ async fn run_one_shot(config: &SpammerConfig, signer: &PrivateKeySigner) -> Resu
 	Ok(())
 }
 
-/// Run in continuous mode
+/// Run in continuous mode (one transaction per slot)
 async fn run_continuous(config: &SpammerConfig, signer: &PrivateKeySigner) -> Result<()> {
-	info!("Running in continuous mode (interval: {}ms)", config.interval_ms);
+	info!("Running in continuous mode (one transaction per slot)");
 
-	let mut interval = time::interval(Duration::from_millis(config.interval_ms));
-
+	let mut last_sent_slot: Option<u64> = None;
 	let mut shutdown = Box::pin(common::utils::wait_for_signal());
+
 	loop {
-		tokio::select! {
-			_ = interval.tick() => {
-				match create_and_send_commitment_request(config, signer).await {
-					Ok(response) => {
-						info!("Commitment request successful, request hash {:?}, signature {:?}", response.commitment.request_hash, response.signature.to_string());
-					}
-					Err(e) => {
-						error!("✗ Failed to create and send commitment request: {}", e);
-					}
+		let current_slot = lookahead::utils::current_slot(&config.chain);
+
+		// Only send if we haven't sent for this slot yet
+		if last_sent_slot != Some(current_slot) {
+			match create_and_send_commitment_request(config, signer).await {
+				Ok((response, tx_hash, target_slot, nonce)) => {
+					info!(
+						"Sent at slot {}, target slot {}: nonce {}, tx_hash {:?}, request_hash {:?}",
+						current_slot, target_slot, nonce, tx_hash, response.commitment.request_hash
+					);
+					last_sent_slot = Some(current_slot);
+				}
+				Err(e) => {
+					error!("Slot {}: Failed: {}", current_slot, e);
+					// Still mark as sent to avoid retry spam on persistent errors
+					last_sent_slot = Some(current_slot);
 				}
 			}
+		}
+
+		// Wait until the next slot
+		let sleep_ms = lookahead::utils::time_until_next_slot_ms(&config.chain);
+		let sleep_duration = Duration::from_millis(sleep_ms.max(100) as u64);
+
+		tokio::select! {
+			_ = tokio::time::sleep(sleep_duration) => {}
 			_ = &mut shutdown => {
 				info!("Shutdown signal received, stopping spammer loop");
 				break;
