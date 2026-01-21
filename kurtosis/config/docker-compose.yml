@@ -90,7 +90,7 @@ services:
     <<: *bin-base
     image: fabric/signer:${VERSION:-dev}
     env_file:
-      - ../config/docker/gateway-signer.env
+      - ${REPO_ROOT}/config/docker/gateway-signer.env
     volumes:
       - ${REPO_ROOT}/config/docker/gateway-signer.toml:/app/config.toml:ro
       - ${REPO_ROOT}/data/keystores/keys:/app/data/keystores/keys:ro
@@ -101,11 +101,11 @@ services:
 
   constraints-builder:
     <<: *bin-base
-    image: constraints-builder:latest
+    image: constraints-builder:${VERSION:-dev}
     container_name: constraints-builder
     volumes:
-      - ${SCRIPT_DIR}/data/genesis:/network-configs:ro
-      - ${SCRIPT_DIR}/data/jwt:/jwt:ro
+      - ${DATA_DIR}/genesis:/network-configs:ro
+      - ${DATA_DIR}/jwt:/jwt:ro
       - reth-data:/data/reth
       - ${CONSTRAINTS_BUILDER_CONFIG}:/app/config.toml:ro
       - ${CONSTRAINTS_BUILDER_BLOCKLIST}:/app/blocklist.json:ro

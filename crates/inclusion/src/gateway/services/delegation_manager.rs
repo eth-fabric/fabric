@@ -6,9 +6,9 @@ use tracing::{debug, error, info, warn};
 
 use crate::constants::LOOKAHEAD_WINDOW_SIZE;
 use crate::gateway::state::GatewayState;
-use crate::storage::DelegationsDbExt;
 use constraints::client::ConstraintsClient;
 use lookahead::utils::{current_slot, slot_to_epoch};
+use proposer::storage::DelegationsDbExt;
 
 /// Delegation manager that monitors delegated slots
 pub struct DelegationManager {

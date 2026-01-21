@@ -3,7 +3,7 @@ use std::fmt::Write as _;
 use std::sync::Arc;
 
 use eyre::Result;
-use rocksdb::{DB, WriteBatch};
+use rocksdb::{DB, Direction, IteratorMode, WriteBatch};
 use serde::{Serialize, de::DeserializeOwned};
 
 /// Basic database operation used for batch writes.
@@ -102,6 +102,62 @@ where
 	}
 
 	s.into_bytes()
+}
+
+/// Prefix key for a range starting at a given slot for a given kind.
+/// Layout: [ kind ][ slot_be ]
+pub fn slot_prefix(kind: u8, slot: u64) -> [u8; 1 + 8] {
+	let mut key = [0u8; 1 + 8];
+	key[0] = kind;
+	key[1..].copy_from_slice(&slot.to_be_bytes());
+	key
+}
+
+pub fn scan_slot_range_kind<T>(db: &DatabaseContext, kind: u8, start_slot: u64, end_slot: u64) -> Result<Vec<(u64, T)>>
+where
+	T: DeserializeOwned,
+{
+	if start_slot > end_slot {
+		return Ok(Vec::new());
+	}
+
+	let start_key = slot_prefix(kind, start_slot);
+	let inner: &rocksdb::DB = &*db.inner();
+
+	let iter = inner.iterator(IteratorMode::From(&start_key, Direction::Forward));
+	let mut out = Vec::new();
+
+	for item in iter {
+		let (key, value) = item?;
+
+		if key.len() < 1 + 8 {
+			continue;
+		}
+
+		// kind at index 0
+		let k = key[0];
+		if k != kind {
+			// different logical table prefix, stop
+			break;
+		}
+
+		// slot in bytes 1..9
+		let mut slot_bytes = [0u8; 8];
+		slot_bytes.copy_from_slice(&key[1..9]);
+		let slot = u64::from_be_bytes(slot_bytes);
+
+		if slot < start_slot {
+			continue;
+		}
+		if slot > end_slot {
+			break;
+		}
+
+		let value_t = serde_json::from_slice::<T>(&value)?;
+		out.push((slot, value_t));
+	}
+
+	Ok(out)
 }
 
 /// Extension trait for typed reads and writes using serde.

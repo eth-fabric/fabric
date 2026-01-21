@@ -38,6 +38,7 @@ common = { package = "fabric-common", path = "../crates/common" }
 lookahead = { package = "fabric-lookahead", path = "../crates/lookahead" }
 inclusion = { package = "fabric-inclusion", path = "../crates/inclusion" }
 urc = { package = "fabric-urc", path = "../crates/urc" }
+proposer = { package = "fabric-proposer", path = "../crates/proposer" }
 
 commit-boost = { workspace = true }
 cb-common = { workspace = true }

@@ -2,3 +2,7 @@
 	path = vendor/urc
 	url = https://github.com/eth-fabric/urc.git
 	branch = signing-domain
+[submodule "constraints_builder"]
+	path = constraints_builder
+	url = https://github.com/eth-fabric/constraints_builder.git
+	branch = gateway-integration

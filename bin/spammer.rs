@@ -40,7 +40,10 @@ struct SpammerConfig {
 }
 
 /// Generate a valid signed transaction, returning encoded bytes, tx hash, and nonce
-async fn generate_signed_transaction(config: &SpammerConfig, signer: &PrivateKeySigner) -> Result<(Bytes, TxHash, u64)> {
+async fn generate_signed_transaction(
+	config: &SpammerConfig,
+	signer: &PrivateKeySigner,
+) -> Result<(Bytes, TxHash, u64)> {
 	// Create execution client
 	let execution_client_url =
 		Url::parse(format!("http://{}:{}", config.execution_client_host, config.execution_client_port).as_str())?;
@@ -140,7 +143,10 @@ async fn run_one_shot(config: &SpammerConfig, signer: &PrivateKeySigner) -> Resu
 	match create_and_send_commitment_request(config, signer).await {
 		Ok((response, tx_hash, target_slot, nonce)) => {
 			info!("Commitment request successful!");
-			info!("Target slot: {}, nonce: {}, tx_hash: {:?}, request_hash: {:?}", target_slot, nonce, tx_hash, response.commitment.request_hash);
+			info!(
+				"Target slot: {}, nonce: {}, tx_hash: {:?}, request_hash: {:?}",
+				target_slot, nonce, tx_hash, response.commitment.request_hash
+			);
 		}
 		Err(e) => {
 			error!("✗ Failed to create and send commitment request: {}", e);

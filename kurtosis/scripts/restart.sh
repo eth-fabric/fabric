@@ -16,65 +16,85 @@
 set -e
 
 # Parse command line arguments
-DEV_MODE=false
+DOCKER_ONLY=false
 for arg in "$@"; do
     case $arg in
-        --dev)
-            DEV_MODE=true
+        --docker-only)
+            DOCKER_ONLY=true
             shift
             ;;
     esac
 done
 
+# The name of the Kurtosis enclave, default: preconf-testnet
 export ENCLAVE_NAME="${ENCLAVE_NAME:-preconf-testnet}"
-export SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# The directory containing this script
+export SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# The directory containing the root Kurtosis directory
+export KURTOSIS_DIR="$(cd "${SCRIPTS_DIR}/.." && pwd)"
+
+# The root directory of the repository
+export REPO_ROOT="$(cd "${KURTOSIS_DIR}/.." && pwd)"
+# The directory to write output to, default: /tmp/fabric
 export OUTPUT_DIR=${OUTPUT_DIR:-/tmp/fabric}
+
+# The directory containing the simulation configuration files
+export CONFIG_DIR=${KURTOSIS_DIR}/config
+
+# The directory containing the simulation data files
+export DATA_DIR=${CONFIG_DIR}/data
+
+# The config file for the fabric services
 export FABRIC_CONFIG=${REPO_ROOT}/config/docker.config.toml
-export CONSTRAINTS_BUILDER_CONFIG=./constraints-builder-docker-config.toml
-export CONSTRAINTS_BUILDER_BLOCKLIST=./blocklist.json
-export FEE_RECIPIENT=0x0000000000000000000000000000000000000000
+
+# The config file for the constraints builder
+export CONSTRAINTS_BUILDER_CONFIG=${CONFIG_DIR}/constraints-builder-config.toml
+
+# The blocklist file for the constraints builder
+export CONSTRAINTS_BUILDER_BLOCKLIST=${CONFIG_DIR}/blocklist.json
 
 echo "========================================"
 echo "  Inclusion Preconf Kurtosis Testnet Setup"
 echo "========================================"
 echo "Enclave: ${ENCLAVE_NAME}"
-echo "Script dir: ${SCRIPT_DIR}"
+echo "Kurtosis dir: ${KURTOSIS_DIR}"
 echo "Repo root: ${REPO_ROOT}"
-if [ "$DEV_MODE" = true ]; then
-    echo "Mode: DEV (skipping Kurtosis teardown/creation)"
+if [ "$DOCKER_ONLY" = true ]; then
+    echo "Mode: DOCKER_ONLY (skipping Kurtosis teardown/creation)"
 fi
 echo ""
 
 # Step 1: Stop existing Docker Compose services
 echo ""
 echo "[Step 1/11] Stopping existing Docker Compose services..."
-cd "${SCRIPT_DIR}"
+cd "${CONFIG_DIR}"
 docker compose down -v 2>/dev/null || echo "  No existing compose services to stop"
 
 # Step 2: Tear down existing Kurtosis enclave
-if [ "$DEV_MODE" = true ]; then
-    echo "[Step 2/11] Skipping Kurtosis teardown (--dev mode)"
+if [ "$DOCKER_ONLY" = true ]; then
+    echo "[Step 2/11] Skipping Kurtosis teardown (--docker-only mode)"
 else
     echo "[Step 2/11] Tearing down existing Kurtosis enclave..."
     kurtosis enclave rm "${ENCLAVE_NAME}" --force 2>/dev/null || echo "  No existing enclave to remove"
 fi
 
 # Step 3: Run Kurtosis to create the network
-if [ "$DEV_MODE" = true ]; then
+if [ "$DOCKER_ONLY" = true ]; then
     echo ""
-    echo "[Step 3/11] Skipping Kurtosis network creation (--dev mode)"
+    echo "[Step 3/11] Skipping Kurtosis network creation (--docker-only mode)"
 else
     echo ""
     echo "[Step 3/11] Starting Kurtosis network..."
     cd "${REPO_ROOT}"
-    kurtosis run github.com/ethpandaops/ethereum-package --enclave "${ENCLAVE_NAME}" --args-file "${SCRIPT_DIR}/kurtosis-network-params.yaml"
+    kurtosis run github.com/ethpandaops/ethereum-package --enclave "${ENCLAVE_NAME}" --args-file "${CONFIG_DIR}/kurtosis-network-params.yaml"
 fi
 
 # Step 4: Extract the ports from the Kurtosis network and update the configuration files
 echo ""
 echo "[Step 4/11] Extracting ports from Kurtosis network and updating configuration files..."
-cd "${SCRIPT_DIR}"
+cd "${SCRIPTS_DIR}"
 python3 get_config_ports.py \
   --enclave ${ENCLAVE_NAME} \
   --fabric-config ${FABRIC_CONFIG} \
@@ -82,24 +102,24 @@ python3 get_config_ports.py \
 # Step 5: Update the chain spec in the fabric config
 echo ""
 echo "[Step 5/11] Updating chain spec in fabric config..."
-cd "${SCRIPT_DIR}"
+cd "${SCRIPTS_DIR}"
 ./get_chain_spec.sh ${ENCLAVE_NAME} ${FABRIC_CONFIG}
 
 # Step 6: Download a copy of the proposer keystores
 echo ""
 echo "[Step 6/11] Downloading proposer keystores..."
-cd "${SCRIPT_DIR}"
+cd "${SCRIPTS_DIR}"
 ./get_kurtosis_keys.sh ${ENCLAVE_NAME} ${OUTPUT_DIR}
 
 # Step 7: Fetch data from Kurtosis
 echo ""
 echo "[Step 7/11] Fetching genesis, JWT, and bootnode data..."
-cd "${SCRIPT_DIR}"
-./get_kurtosis_data.sh
+cd "${SCRIPTS_DIR}"
+./get_kurtosis_data.sh ${ENCLAVE_NAME} ${DATA_DIR}
 
 # Load the Bootnodes into environment variables (comma-separated)
-export BOOTNODES_EL=$(grep -m 1 '^enode://' ./data/genesis/bootnode.txt)
-export BOOTNODES_CL=$(grep -m 1 '^enr:' ./data/genesis/bootstrap_nodes.txt)
+export BOOTNODES_EL=$(grep -m 1 '^enode://' ${DATA_DIR}/genesis/bootnode.txt)
+export BOOTNODES_CL=$(grep -m 1 '^enr:' ${DATA_DIR}/genesis/bootstrap_nodes.txt)
 echo "BOOTNODES_EL=$BOOTNODES_EL"
 echo "BOOTNODES_CL=$BOOTNODES_CL"
 
@@ -166,7 +186,7 @@ cd "${REPO_ROOT}" && just setup-docker-simulation
 # Step 11: Start the fabric services
 echo ""
 echo "[Step 11/11] Starting the fabric services via Docker Compose..."
-cd "${SCRIPT_DIR}"
+cd "${CONFIG_DIR}"
 docker compose up -d
 
 echo ""
@@ -179,4 +199,7 @@ echo "  kurtosis enclave inspect ${ENCLAVE_NAME}"
 echo ""
 echo "External services:"
 echo "  docker compose logs -f"
+echo ""
+echo "Block explorer:"
+echo "  $(kurtosis port print ${ENCLAVE_NAME} dora http)"
 echo ""
