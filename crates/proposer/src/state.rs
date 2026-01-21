@@ -12,7 +12,7 @@ use lookahead::{
 };
 use reqwest::Url;
 
-use crate::proposer::config::ProposerConfig;
+use crate::config::ProposerConfig;
 
 /// Server state that provides access to shared resources for proposer operations
 #[derive(Clone)]

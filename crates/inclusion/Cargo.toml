@@ -14,6 +14,7 @@ full = [
     "common",
     "lookahead",
     "signing",
+    "proposer",
     "urc",
     "async-trait",
     "serde_json",
@@ -49,6 +50,7 @@ common = { package = "fabric-common", path = "../common", optional = true }
 lookahead = { package = "fabric-lookahead", path = "../lookahead", optional = true }
 signing = { package = "fabric-signing", path = "../signing", optional = true }
 urc = { package = "fabric-urc", path = "../urc", optional = true }
+proposer = { package = "fabric-proposer", path = "../proposer", optional = true }
 commit-boost = { workspace = true, optional = true }
 async-trait = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }

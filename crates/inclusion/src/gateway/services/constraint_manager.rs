@@ -8,9 +8,10 @@ use tracing::{debug, error, info, warn};
 use crate::constants::CONSTRAINT_TRIGGER_OFFSET_MS;
 use crate::gateway::state::GatewayState;
 use crate::gateway::utils::sign_constraints_message;
-use crate::storage::{DelegationsDbExt, InclusionDbExt};
+use crate::storage::InclusionDbExt;
 use constraints::client::ConstraintsClient;
 use lookahead::utils::{current_slot, time_until_slot_ms};
+use proposer::storage::DelegationsDbExt;
 
 /// Constraint manager that monitors delegated slots and triggers constraint processing
 pub struct ConstraintManager {
@@ -57,9 +58,7 @@ impl ConstraintManager {
 
 						if trigger_time_ms <= 0 {
 							// Time to process constraints for this slot
-							debug!(
-								"Triggering constraints processing for slot {}",target_slot
-							);
+							debug!("Triggering constraints processing for slot {}", target_slot);
 							if let Err(e) = self.post_constraints(target_slot, delegation).await {
 								warn!("Failed to process constraints for slot {}: {}", target_slot, e);
 							}

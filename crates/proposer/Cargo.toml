@@ -1,0 +1,36 @@
+[package]
+name = "fabric-proposer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Required dependencies
+alloy = { workspace = true }
+serde = { workspace = true }
+eyre = { workspace = true }
+constraints = { package = "fabric-constraints", path = "../constraints" }
+
+# Used in implementations
+common = { package = "fabric-common", path = "../common" }
+lookahead = { package = "fabric-lookahead", path = "../lookahead" }
+signing = { package = "fabric-signing", path = "../signing" }
+urc = { package = "fabric-urc", path = "../urc" }
+commit-boost = { workspace = true }
+rocksdb = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+
+async-trait = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+axum = { workspace = true, optional = true }
+reqwest = { workspace = true }
+jsonrpsee = { workspace = true, optional = true }
+lazy_static = { workspace = true, optional = true }
+prometheus = { workspace = true, optional = true }
+
+[dev-dependencies]
+cb-common = { workspace = true }
+tokio = { workspace = true }
+tempfile = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

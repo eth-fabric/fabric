@@ -100,10 +100,7 @@ mod tests {
 		// Use current time as genesis, so slot 1 should be ~12 seconds in the future
 		// Note: genesis_time is in seconds, but function returns milliseconds
 		// There's up to 999ms discrepancy due to sub-second timing
-		let now_secs = std::time::SystemTime::now()
-			.duration_since(std::time::UNIX_EPOCH)
-			.unwrap()
-			.as_secs();
+		let now_secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
 
 		let time_until = time_until_slot_ms(now_secs, 1);
 
@@ -116,10 +113,7 @@ mod tests {
 	#[test]
 	fn test_time_until_slot_ms_past_slot() {
 		// Use a genesis time 1 minute in the past
-		let now_secs = std::time::SystemTime::now()
-			.duration_since(std::time::UNIX_EPOCH)
-			.unwrap()
-			.as_secs();
+		let now_secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
 		let genesis_time = now_secs - 60; // 60 seconds ago
 
 		// Slot 0 started at genesis (60 seconds ago)
@@ -134,10 +128,7 @@ mod tests {
 	#[test]
 	fn test_time_until_slot_ms_returns_milliseconds() {
 		// Verify that the function returns milliseconds, not seconds
-		let now_secs = std::time::SystemTime::now()
-			.duration_since(std::time::UNIX_EPOCH)
-			.unwrap()
-			.as_secs();
+		let now_secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
 
 		// Slot 10 starts at genesis + (10 * 12) = 120 seconds = 120000ms
 		let time_until = time_until_slot_ms(now_secs, 10);
@@ -150,10 +141,7 @@ mod tests {
 	fn test_time_until_slot_ms_slot_boundary() {
 		// Test at slot boundary: if we're exactly at slot N, time until slot N should be ~0
 		// Note: there's up to 999ms discrepancy because genesis_time is in seconds
-		let now_secs = std::time::SystemTime::now()
-			.duration_since(std::time::UNIX_EPOCH)
-			.unwrap()
-			.as_secs();
+		let now_secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
 
 		// At genesis (slot 0), time_until_slot_ms(genesis, 0) should be close to 0
 		let time_until = time_until_slot_ms(now_secs, 0);

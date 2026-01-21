@@ -10,12 +10,13 @@ use constraints::types::{
 	SubmitBlockRequestWithProofs,
 };
 use lookahead::utils::current_slot;
+use proposer::storage::DelegationsDbExt;
 use signing::signer::verify_bls;
 use urc::utils::{get_constraints_message_signing_root, get_delegation_signing_root};
 
 use crate::constants::{INCLUSION_CONSTRAINT_TYPE, MAX_CONSTRAINTS_PER_SLOT};
 use crate::proofs::{InclusionProof, verify_constraints};
-use crate::storage::{DelegationsDbExt, LookaheadDbExt};
+use crate::storage::LookaheadDbExt;
 use crate::types::InclusionPayload;
 
 /// Verify BLS signature on a SignedConstraints message using the delegate public key from the message
@@ -143,7 +144,11 @@ pub fn handle_proof_validation(
 /// Assumes that the constraints are sorted by constraint type
 pub fn verify_proof_completeness(proofs: &ConstraintProofs, constraints: &[Constraint]) -> Result<()> {
 	if proofs.constraint_types.len() != constraints.len() {
-		return Err(eyre!("Constraint types length mismatch, received {} constraints, expected {}", proofs.constraint_types.len(), constraints.len()));
+		return Err(eyre!(
+			"Constraint types length mismatch, received {} constraints, expected {}",
+			proofs.constraint_types.len(),
+			constraints.len()
+		));
 	}
 
 	let matching_constraint_types =
