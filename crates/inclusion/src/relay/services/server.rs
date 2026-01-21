@@ -24,7 +24,8 @@ use crate::relay::{
 		validate_is_proposer, verify_constraints_signature, verify_delegation_signature,
 	},
 };
-use crate::storage::{DelegationsDbExt, InclusionDbExt};
+use crate::storage::InclusionDbExt;
+use proposer::storage::DelegationsDbExt;
 
 #[derive(Clone)]
 pub struct RelayServer {

@@ -1797,7 +1797,7 @@ dependencies = [
 [[package]]
 name = "cb-cli"
 version = "0.8.1-rc.1"
-source = "git+https://github.com/JasonVranek/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
+source = "git+https://github.com/eth-fabric/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
 dependencies = [
  "cb-common",
  "clap",
@@ -1810,7 +1810,7 @@ dependencies = [
 [[package]]
 name = "cb-common"
 version = "0.8.1-rc.1"
-source = "git+https://github.com/JasonVranek/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
+source = "git+https://github.com/eth-fabric/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
 dependencies = [
  "aes 0.8.4",
  "alloy",
@@ -1857,7 +1857,7 @@ dependencies = [
 [[package]]
 name = "cb-metrics"
 version = "0.8.1-rc.1"
-source = "git+https://github.com/JasonVranek/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
+source = "git+https://github.com/eth-fabric/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
 dependencies = [
  "axum 0.8.7",
  "cb-common",
@@ -1871,7 +1871,7 @@ dependencies = [
 [[package]]
 name = "cb-pbs"
 version = "0.8.1-rc.1"
-source = "git+https://github.com/JasonVranek/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
+source = "git+https://github.com/eth-fabric/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
 dependencies = [
  "alloy",
  "async-trait",
@@ -1897,7 +1897,7 @@ dependencies = [
 [[package]]
 name = "cb-signer"
 version = "0.8.1-rc.1"
-source = "git+https://github.com/JasonVranek/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
+source = "git+https://github.com/eth-fabric/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
 dependencies = [
  "alloy",
  "axum 0.8.7",
@@ -2102,7 +2102,7 @@ dependencies = [
 [[package]]
 name = "commit-boost"
 version = "0.8.1-rc.1"
-source = "git+https://github.com/JasonVranek/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
+source = "git+https://github.com/eth-fabric/commit-boost-client?branch=fabric#c2dacbf69e075fc97976ba2120e1785c54cf3da4"
 dependencies = [
  "cb-cli",
  "cb-common",
@@ -3043,6 +3043,7 @@ dependencies = [
  "fabric-constraints",
  "fabric-inclusion",
  "fabric-lookahead",
+ "fabric-proposer",
  "fabric-urc",
  "indexmap 2.12.1",
  "rand 0.8.5",
@@ -3132,6 +3133,7 @@ dependencies = [
  "fabric-common",
  "fabric-constraints",
  "fabric-lookahead",
+ "fabric-proposer",
  "fabric-signing",
  "fabric-urc",
  "jsonrpsee",
@@ -3160,6 +3162,33 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fabric-proposer"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "async-trait",
+ "axum 0.8.7",
+ "cb-common",
+ "commit-boost",
+ "eyre",
+ "fabric-common",
+ "fabric-constraints",
+ "fabric-lookahead",
+ "fabric-signing",
+ "fabric-urc",
+ "jsonrpsee",
+ "lazy_static",
+ "prometheus",
+ "reqwest",
+ "rocksdb",
+ "serde",
+ "serde_json",
+ "tempfile",
  "tokio",
  "tracing",
 ]

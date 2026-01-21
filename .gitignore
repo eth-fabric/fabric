@@ -5,7 +5,7 @@ data/proxy
 data/rocksdb
 build
 *.bak
-kurtosis/network-configs
-kurtosis/data
+kurtosis/config/data
 kurtosis/jwt
 kurtosis/.env
+kurtosis/scripts/data

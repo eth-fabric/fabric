@@ -6,9 +6,9 @@ members = [
     "crates/constraints",
     "crates/inclusion",
     "crates/lookahead",
+    "crates/proposer",
     "crates/signing",
     "crates/urc",
-    # "tests",
 ]
 resolver = "2"
 
@@ -60,9 +60,11 @@ bincode = "1.3"
 # commit-boost = { git = "https://github.com/Commit-Boost/commit-boost-client", branch = "fabric" }
 # cb-common = { git = "https://github.com/Commit-Boost/commit-boost-client", branch = "fabric" }
 # cb-signer = { git = "https://github.com/Commit-Boost/commit-boost-client", branch = "fabric" }
-commit-boost = { git = "https://github.com/JasonVranek/commit-boost-client", branch = "fabric" }
-cb-common = { git = "https://github.com/JasonVranek/commit-boost-client", branch = "fabric" }
-cb-signer = { git = "https://github.com/JasonVranek/commit-boost-client", branch = "fabric" }
+
+# Required until CB supports custom chain specs
+commit-boost = { git = "https://github.com/eth-fabric/commit-boost-client", branch = "fabric" }
+cb-common = { git = "https://github.com/eth-fabric/commit-boost-client", branch = "fabric" }
+cb-signer = { git = "https://github.com/eth-fabric/commit-boost-client", branch = "fabric" }
 
 
 [patch.crates-io]

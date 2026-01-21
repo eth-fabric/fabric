@@ -1,34 +1,23 @@
 use alloy::primitives::B256;
 use alloy::rpc::types::beacon::BlsPublicKey;
 use commitments::types::SignedCommitment;
-use constraints::types::{Constraint, SignedConstraints, SignedDelegation};
+use constraints::types::{Constraint, SignedConstraints};
 use eyre::Result;
 use rocksdb::{Direction, IteratorMode};
-use serde::de::DeserializeOwned;
 
 use common::storage::{
 	DatabaseContext,
-	db::{DbOp, TypedDbExt},
+	db::{DbOp, TypedDbExt, scan_slot_range_kind, slot_prefix},
 };
 
 use crate::types::SignedCommitmentAndConstraint;
 
 /// 1-byte table tags so everything shares the same RocksDB instance.
-const KIND_SIGNED_DELEGATION: u8 = b'A';
 const KIND_SIGNED_CONSTRAINT: u8 = b'B';
 const KIND_CONSTRAINT: u8 = b'C';
 const KIND_SIGNED_COMMITMENT: u8 = b'D';
 const KIND_LOOKAHEAD: u8 = b'E';
 const KIND_SIGNED_CONSTRAINTS_POSTED: u8 = b'F';
-
-/// Key for a single SignedDelegation.
-/// Layout: [ 'A' ][ slot_be ]
-pub fn signed_delegation_key(slot: u64) -> [u8; 1 + 8] {
-	let mut key = [0u8; 1 + 8];
-	key[0] = KIND_SIGNED_DELEGATION;
-	key[1..].copy_from_slice(&slot.to_be_bytes());
-	key
-}
 
 /// Key for a single SignedConstraints.
 /// Layout: [ 'B' ][ slot_be ]
@@ -75,89 +64,6 @@ pub fn signed_constraints_finalized_key(slot: u64) -> [u8; 1 + 8] {
 	key[1..].copy_from_slice(&slot.to_be_bytes());
 	key
 }
-/// Prefix key for a range starting at a given slot for a given kind.
-/// Layout: [ kind ][ slot_be ]
-pub fn slot_prefix(kind: u8, slot: u64) -> [u8; 1 + 8] {
-	let mut key = [0u8; 1 + 8];
-	key[0] = kind;
-	key[1..].copy_from_slice(&slot.to_be_bytes());
-	key
-}
-
-fn scan_slot_range_kind<T>(db: &DatabaseContext, kind: u8, start_slot: u64, end_slot: u64) -> Result<Vec<(u64, T)>>
-where
-	T: DeserializeOwned,
-{
-	if start_slot > end_slot {
-		return Ok(Vec::new());
-	}
-
-	let start_key = slot_prefix(kind, start_slot);
-	let inner: &rocksdb::DB = &*db.inner();
-
-	let iter = inner.iterator(IteratorMode::From(&start_key, Direction::Forward));
-	let mut out = Vec::new();
-
-	for item in iter {
-		let (key, value) = item?;
-
-		if key.len() < 1 + 8 {
-			continue;
-		}
-
-		// kind at index 0
-		let k = key[0];
-		if k != kind {
-			// different logical table prefix, stop
-			break;
-		}
-
-		// slot in bytes 1..9
-		let mut slot_bytes = [0u8; 8];
-		slot_bytes.copy_from_slice(&key[1..9]);
-		let slot = u64::from_be_bytes(slot_bytes);
-
-		if slot < start_slot {
-			continue;
-		}
-		if slot > end_slot {
-			break;
-		}
-
-		let value_t = serde_json::from_slice::<T>(&value)?;
-		out.push((slot, value_t));
-	}
-
-	Ok(out)
-}
-pub trait DelegationsDbExt {
-	fn store_delegation(&self, delegation: &SignedDelegation) -> Result<()>;
-	fn get_delegation(&self, slot: u64) -> Result<Option<SignedDelegation>>;
-	fn get_delegations_in_range(&self, start_slot: u64, end_slot: u64) -> Result<Vec<(u64, SignedDelegation)>>;
-	fn is_delegated(&self, slot: u64) -> Result<bool>;
-}
-
-impl DelegationsDbExt for DatabaseContext {
-	fn store_delegation(&self, delegation: &SignedDelegation) -> Result<()> {
-		let slot = delegation.message.slot; // adjust to your real field
-		let key = signed_delegation_key(slot);
-		self.put_json(&key, delegation)
-	}
-
-	fn get_delegation(&self, slot: u64) -> Result<Option<SignedDelegation>> {
-		let key = signed_delegation_key(slot);
-		self.get_json(&key)
-	}
-
-	fn get_delegations_in_range(&self, start_slot: u64, end_slot: u64) -> Result<Vec<(u64, SignedDelegation)>> {
-		scan_slot_range_kind::<SignedDelegation>(self, KIND_SIGNED_DELEGATION, start_slot, end_slot)
-	}
-
-	fn is_delegated(&self, slot: u64) -> Result<bool> {
-		Ok(self.get_delegation(slot)?.is_some())
-	}
-}
-
 pub trait InclusionDbExt {
 	fn store_signed_constraints(&self, constraint: &SignedConstraints) -> Result<()>;
 
@@ -326,20 +232,6 @@ mod tests {
 	}
 
 	#[test]
-	fn signed_delegation_key_layout_is_correct() {
-		let slot = 42u64;
-		let key = signed_delegation_key(slot);
-
-		assert_eq!(key.len(), 1 + 8);
-		assert_eq!(key[0], KIND_SIGNED_DELEGATION);
-
-		let mut slot_bytes = [0u8; 8];
-		slot_bytes.copy_from_slice(&key[1..9]);
-		let parsed = u64::from_be_bytes(slot_bytes);
-		assert_eq!(parsed, slot);
-	}
-
-	#[test]
 	fn signed_constraint_key_layout_is_correct() {
 		let slot = 123u64;
 		let key = signed_constraint_key(slot);
@@ -394,83 +286,6 @@ mod tests {
 		slot_bytes.copy_from_slice(&key[1..9]);
 		let parsed = u64::from_be_bytes(slot_bytes);
 		assert_eq!(parsed, slot);
-	}
-
-	#[test]
-	fn slot_prefix_layout_is_correct() {
-		let slot = 1234u64;
-		let key = slot_prefix(KIND_SIGNED_DELEGATION, slot);
-
-		assert_eq!(key.len(), 1 + 8);
-		assert_eq!(key[0], KIND_SIGNED_DELEGATION);
-
-		let mut slot_bytes = [0u8; 8];
-		slot_bytes.copy_from_slice(&key[1..9]);
-		let parsed = u64::from_be_bytes(slot_bytes);
-		assert_eq!(parsed, slot);
-	}
-
-	#[test]
-	fn scan_slot_range_kind_empty_db_returns_empty() -> Result<()> {
-		let db = new_temp_db()?;
-
-		let result = super::scan_slot_range_kind::<TestValue>(&db, KIND_SIGNED_DELEGATION, 10, 20)?;
-
-		assert!(result.is_empty());
-		Ok(())
-	}
-
-	#[test]
-	fn scan_slot_range_kind_with_start_greater_than_end_is_empty() -> Result<()> {
-		let db = new_temp_db()?;
-
-		let result = super::scan_slot_range_kind::<TestValue>(&db, KIND_SIGNED_DELEGATION, 20, 10)?;
-
-		assert!(result.is_empty());
-		Ok(())
-	}
-
-	#[test]
-	fn scan_slot_range_kind_filters_by_kind_and_slot_range() -> Result<()> {
-		let db = new_temp_db()?;
-
-		// Insert some values manually using raw keys.
-		// Two delegations, two constraints, mixed slots.
-		let v1 = make_test_value(1);
-		let v2 = make_test_value(2);
-		let v3 = make_test_value(3);
-		let v4 = make_test_value(4);
-
-		// Delegations at slots 5 and 15
-		db.put_json(&signed_delegation_key(5), &v1)?;
-		db.put_json(&signed_delegation_key(15), &v2)?;
-
-		// Constraints at slots 10 and 20
-		db.put_json(&signed_constraint_key(10), &v3)?;
-		db.put_json(&signed_constraint_key(20), &v4)?;
-
-		// Scan delegations in [0, 100]
-		let delegations = super::scan_slot_range_kind::<TestValue>(&db, KIND_SIGNED_DELEGATION, 0, 100)?;
-		assert_eq!(delegations.len(), 2);
-		assert_eq!(delegations[0], (5, v1));
-		assert_eq!(delegations[1], (15, v2.clone()));
-
-		// Scan constraints in [0, 100]
-		let constraints = super::scan_slot_range_kind::<TestValue>(&db, KIND_SIGNED_CONSTRAINT, 0, 100)?;
-		assert_eq!(constraints.len(), 2);
-		assert_eq!(constraints[0], (10, v3));
-		assert_eq!(constraints[1], (20, v4));
-
-		// Scan delegations in [6, 14] should only return slot 15? No, that is out of range.
-		let delegations_mid = super::scan_slot_range_kind::<TestValue>(&db, KIND_SIGNED_DELEGATION, 6, 14)?;
-		assert_eq!(delegations_mid.len(), 0);
-
-		// Scan delegations in [6, 15] should return only slot 15.
-		let delegations_mid2 = super::scan_slot_range_kind::<TestValue>(&db, KIND_SIGNED_DELEGATION, 6, 15)?;
-		assert_eq!(delegations_mid2.len(), 1);
-		assert_eq!(delegations_mid2[0], (15, v2.clone()));
-
-		Ok(())
 	}
 
 	#[test]

@@ -9,11 +9,12 @@ use tracing::{debug, info};
 use commitments::rpc::CommitmentsRpcServer;
 use commitments::types::{CommitmentRequest, FeeInfo, Offering, SignedCommitment, SlotInfo, SlotInfoResponse};
 use lookahead::utils::current_slot;
+use proposer::storage::DelegationsDbExt;
 
 use crate::constants::{INCLUSION_COMMITMENT_TYPE, LOOKAHEAD_WINDOW_SIZE};
 use crate::gateway::state::GatewayState;
 use crate::gateway::utils;
-use crate::storage::{DelegationsDbExt, InclusionDbExt};
+use crate::storage::InclusionDbExt;
 
 #[derive(Clone)]
 pub struct GatewayRpc {

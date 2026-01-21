@@ -1,4 +1,3 @@
-
 use eyre::{Result, WrapErr};
 use tracing::debug;
 
@@ -11,11 +10,11 @@ use commit_boost::prelude::{Chain, commit::client::SignerClient};
 
 use commitments::types::{Commitment, CommitmentRequest, FeeInfo, SignedCommitment};
 use constraints::types::{Constraint, ConstraintsMessage, SignedConstraints};
+use lookahead::utils::time_until_slot_ms;
 use signing::signer;
 use urc::utils::{
 	get_commitment_request_signing_root, get_commitment_signing_root, get_constraints_message_signing_root,
 };
-use lookahead::utils::time_until_slot_ms;
 
 use crate::constants::{CONSTRAINT_TRIGGER_OFFSET_MS, INCLUSION_COMMITMENT_TYPE, INCLUSION_CONSTRAINT_TYPE};
 use crate::types::{FeePayload, InclusionPayload};

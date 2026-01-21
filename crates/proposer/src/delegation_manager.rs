@@ -1,6 +1,6 @@
-use crate::proposer::state::ProposerState;
-use crate::proposer::utils::create_signed_delegation;
+use crate::state::ProposerState;
 use crate::storage::DelegationsDbExt;
+use crate::utils::create_signed_delegation;
 use alloy::rpc::types::beacon::BlsPublicKey;
 use constraints::client::ConstraintsClient;
 use eyre::{Context, Result};

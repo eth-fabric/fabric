@@ -1,12 +1,8 @@
 # Fabric
 
-This repo provides rust components to simplify working with Fabric's Constraints API and Commitments API specs as well as a reference implementation of L1 inclusion preconfs. This is not audited and subject to change, use at your own risk!
-
-
+This repo contains an end-to-end reference implementation of L1 inclusion preconfs. It's meant to serve as a stepping stone to simplify working with Fabric's Constraints API and Commitments API specs. This is not audited and subject to change, use at your own risk!
 
 ## Reference implementation
-This repo contains a reference implementation of a Gateway, Relay, and Proposer, all coordinating to issue L1 inclusion preconfs. 
-
 - **Gateway**: 
   - Hosts a `GatewayRpc` server that implements the Commitments spec  and specifically accepts commitment requests for `InclusionPayload` types.
   - Runs a `DelegationManager` task that periodically queries the relay using its `HttpConstraintsClient` to fetch any upcoming delegations.
@@ -16,8 +12,10 @@ This repo contains a reference implementation of a Gateway, Relay, and Proposer,
   - Runs a `LookaheadManager` task that tracks the beacon chain lookahead to know if a `SignedDelegation` is valid for a slot.
 - **Proposer**:
   - Runs a `DelegationManager` task that signs tracks the beacon chain lookahead. If their proposer key is scheduled, they will post a `SignedDelegation` to the relay via their `HttpConstraintsClient`.
+- **Constraints Builder**:
+  - Runs a modified rbuilder that appends inclusion preconf transactions to the bottom of the block.
 
-**Implementation Opinions**
+#### Implementation Opinions
 - Relay only accepts one valid `SignedDelegation` per slot
 - Relay only accepts one valid `SignedConstraints` per slot
 - After the target slot has elapsed, the relay no longer enforces the  whitelist for `GET /constraints`
@@ -55,6 +53,9 @@ This repo contains a reference implementation of a Gateway, Relay, and Proposer,
 - **`signing/`** - BLS/ECDSA signing utils
   - minimal wrapper around the Commit-Boost `SignerClient`
 
+- **`proposer/`** - Proposer delegation module
+  - service to sign delegations based on lookahead 
+
 - **`urc/`** - Universal Registry Contract utils
   - bindings for the URC contract
   - hashing utils for signing data s.t., URC contracts can verify
@@ -64,18 +65,22 @@ This repo contains a reference implementation of a Gateway, Relay, and Proposer,
   - types
   - merkle inclusion proof utils
   - gateway implementation
-  - proposer implementation
   - relay implementation
 
-## Local Development
+## Usage
 
 ### Prerequisites
 
 - **Rust** (stable) - Install from [rustup.rs](https://rustup.rs/)
 - **Just** - Task runner (`brew install just` on macOS)
 - **Foundry** - For URC contract bindings (optional, only if modifying contracts)
+- **Kurtosis CLI** - See [installation guide](https://docs.kurtosis.com/install)
 
-### Building
+#### Update the submodules
+```bash
+git submodule init
+git submodule update
+```
 
 #### Building URC Bindings (Optional)
 
@@ -94,81 +99,62 @@ cd ./vendor/urc
 forge bind --crate-name urc --overwrite --bindings-path ../../crates/urc/src/bindings
 ```
 
-### Running Locally
-
-#### 1. Setup Simulation Configs
-
-Generate the config and .env files for the binaries
+### Building
+The following commands build the Docker images expected by Kurtosis.
 
 ```bash
-just setup-simulation
+export VERSION=dev
+
+# Build local Commit-Boost Signer Module Docker image
+just build-signer $VERSION
+
+# Build Gateway Docker image
+just build-signer $VERSION
+
+# Build Relay Docker image
+just build-signer $VERSION
+
+# Build Proposer Module Docker image
+just build-proposer $VERSION
+
+# Build Spammer Module Docker image
+just build-spammer $VERSION
+
+# Build Constraints Builder Docker image
+just build-builder $VERSION
 ```
 
-#### 2. Start Services
+### Running
+#### Kurtosis setup
+The Kurtosis config is defined at `./kurtosis/config/kurtosis-network-params.yaml`. By default, it launches two full nodes, each running two validators, a MEV-Boost relay, a transaction spammer, and blocker explorer utilities. 
 
-Run each service in a separate terminal:
+The `./kurtosis/config/docker-compose.yml` and `./kurtosis/scripts` files work together so that the Kurtosis network members can communicate with the Dockerized fabric members, i.e., so the Constraint Builder's node can sync with the network.
+
+#### Launching Kurtosis
+The following will launch the Kurtosis network with all of the Fabric services locally. It's recommended that your computer has sufficient disk space.
 
 ```bash
-# Terminal 1: Signer module
-just run-local-signer
+# Tears down and relaunches everything
+just restart-testnet          
 
-# Terminal 2: Mock beacon node
-just run-local-beacon-mock
+# Stops everything
+just stop-testnet
 
-# Terminal 3: Relay
-just run-local-relay
+# Only restarts the Docker containers
+# (Useful for developing)
+just restart-testnet-docker
 
-# Terminal 4: Proposer
-just run-local-proposer
+# Prints the URLs of every Kurtosis member
+just inspect-testnet
 
-# Terminal 5: Gateway
-just run-local-gateway
-
-# Terminal 6: Spammer
-just run-local-spammer
+# Prints the URL of the block explorer
+just block-explorer
 ```
 
-## Docker Deployment
-
-### Prerequisites
-
-- Docker Desktop (for macOS/Windows) or Docker Engine (for Linux)
-- `just` command runner (`brew install just`)
-
-### Building Docker Images
-
-Build all service images with a version tag:
-
-```bash
-# Build all images with 'dev' tag
-just build-all dev
-
-# Or build specific services individually
-just build-gateway dev
-just build-proposer dev
-just build-relay dev
-just build-spammer dev
-just build-signer dev
-just build-beacon-mock dev
-```
-
-Images are tagged as `fabric/<service>:<version>`.
-
-### Running with Docker Compose
-
-#### Setup Docker Simulation Configs
-
-Generate the config and .env files for the containers
-
-```bash
-just setup-docker-simulation
-```
-
-#### Run containers
-
-```bash
-just up
-```
+#### Some notes
+- It takes a while (dozens of slots) for the MEV-Boost Relay to supply the Constraints Builder with registration data. This means it'll be delayed before posting blocks.
+- If any Kurtosis services crash it's recommended to restart everything `just restart-testnet`
+- The Spammer service will only update it's nonce after its inclusion transcation lands on-chain. Since inclusion requests happen earlier than the block inclusion, expect to see some errors like: `"Failed to submit blocks with proofs: Constraint types length mismatch, received 0 constraints, expected 1`. The reason is the builder will exclude transactions with failed nonces by default. Once the inclusion lands on-chain, the Spammer will update the nonce and the simulation will progress.
 
 ## Specifications
 

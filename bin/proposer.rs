@@ -6,8 +6,8 @@ use commit_boost::prelude::load_commit_module_config;
 
 use common::storage::create_database;
 use constraints::client::ConstraintsClient;
-use inclusion::proposer::{config::ProposerConfig, delegation_manager::DelegationManager, state::ProposerState};
 use lookahead::utils::current_slot;
+use proposer::{config::ProposerConfig, delegation_manager::DelegationManager, state::ProposerState};
 
 async fn setup_state() -> Result<ProposerState> {
 	// Load configuration using commit-boost's config loader
