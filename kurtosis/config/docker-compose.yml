@@ -101,7 +101,7 @@ services:
 
   constraints-builder:
     <<: *bin-base
-    image: constraints-builder:latest
+    image: constraints-builder:${VERSION:-dev}
     container_name: constraints-builder
     volumes:
       - ${KURTOSIS_DIR}/data/genesis:/network-configs:ro

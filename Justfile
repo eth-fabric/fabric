@@ -44,6 +44,7 @@
 #   stop-testnet             Stop kurtosis testnet
 #   restart-testnet-docker   Restart docker but keep kurtosis testnet running
 #   inspect-testnet          Inspect kurtosis testnet
+#   block-explorer           Prints block explorer URL to console
 #
 
 # ===============================
@@ -170,9 +171,9 @@ build-all version:
 	just build-beacon-mock {{version}}
 
 # Build the docker image for the constraints_builder
-build-builder:
+build-builder version:
 	#!/usr/bin/env bash
-	cd constraints_builder/docker/ && just build
+	cd constraints_builder/docker/ && just build {{version}}
 
 restart-testnet:
 	#!/usr/bin/env bash
@@ -190,3 +191,6 @@ restart-testnet-docker:
 
 inspect-testnet:
 	kurtosis enclave inspect preconf-testnet
+
+block-explorer:
+	kurtosis port print preconf-testnet dora http
