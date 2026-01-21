@@ -143,7 +143,7 @@ pub fn handle_proof_validation(
 /// Assumes that the constraints are sorted by constraint type
 pub fn verify_proof_completeness(proofs: &ConstraintProofs, constraints: &[Constraint]) -> Result<()> {
 	if proofs.constraint_types.len() != constraints.len() {
-		return Err(eyre!("Constraint types length mismatch"));
+		return Err(eyre!("Constraint types length mismatch, received {} constraints, expected {}", proofs.constraint_types.len(), constraints.len()));
 	}
 
 	let matching_constraint_types =

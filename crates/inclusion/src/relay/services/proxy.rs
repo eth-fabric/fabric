@@ -20,32 +20,62 @@ impl LegacyRelayClient {
 	}
 
 	pub async fn submit_block(&self, block: AlloySubmitBlockRequest, headers: HeaderMap) -> Result<()> {
-		let url = format!("{}/{}", self.base_url.trim_end_matches('/'), LEGACY_SUBMIT_BLOCK.trim_start_matches('/'));
+        let url = format!(
+            "{}/{}",
+            self.base_url.trim_end_matches('/'),
+            LEGACY_SUBMIT_BLOCK.trim_start_matches('/')
+        );
 
-		info!("Submitting block to downstream relay: {}", url);
+        info!("Submitting block to downstream relay: {}", url);
 
-		// Build downstream relay request
-		let mut req = self.client.post(&url);
+        // Build downstream relay request
+        let mut req = self.client.post(&url);
 
-		// Forward relevant headers
-		for (key, value) in headers.iter() {
-			let key_str = key.as_str();
-			if key_str != "host" && key_str != "connection" && !key_str.starts_with("x-forwarded") {
-				if let Ok(val) = value.to_str() {
-					req = req.header(key_str, val);
-				}
-			}
-		}
+        // IMPORTANT:
+        // Since we are mutating the inbound request (stripping proof data) before forwarding.
+        // We MUST NOT forward payload-specific headers such as Content-Length.
+        //
+        // Safer approach: allowlist only the headers we actually need.
+        const ALLOWLIST: [&str; 3] = [
+            "authorization",
+            "user-agent",
+            "x-request-id",
+        ];
 
-		// Set content type
-		req = req.header("Content-Type", "application/json");
+        for (name, value) in headers.iter() {
+            let name_str = name.as_str();
 
-		// Send block request to downstream relay
-		let response = req.json(&block).send().await?;
-		if response.status().is_success() {
-			Ok(())
-		} else {
-			Err(eyre!("Failed to submit block to downstream relay: {}", response.status()))
-		}
-	}
+            if !ALLOWLIST.iter().any(|h| h.eq_ignore_ascii_case(name_str)) {
+                continue;
+            }
+
+            // HeaderValue -> &str conversion may fail for non-UTF8; skip those safely.
+            if let Ok(val) = value.to_str() {
+                req = req.header(name_str, val);
+            }
+        }
+
+        // Do NOT set Content-Type manually; reqwest sets it for you when using .json().
+        // Do NOT forward Content-Length; reqwest computes it for the outbound body.
+        //
+        // Send block request to downstream relay
+        let response = req.json(&block).send().await?;
+
+        if response.status().is_success() {
+            // Drain the body to encourage clean connection reuse under load, even if you ignore it.
+            let _ = response.bytes().await;
+            Ok(())
+        } else {
+            let status = response.status();
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Failed to read response body".to_string());
+            Err(eyre!(
+                "Failed to submit block to downstream relay: status={}, body={}",
+                status,
+                body
+            ))
+        }
+    }
 }

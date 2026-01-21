@@ -189,7 +189,7 @@ impl ConstraintsApi for RelayServer {
 		block_request: SubmitBlockRequestWithProofs,
 		headers: HeaderMap,
 	) -> Result<()> {
-		info!("post_blocks_with_proofs()");
+		info!("post_blocks_with_proofs(), slot={}", block_request.slot());
 		// Get the slot
 		let slot = block_request.slot();
 
