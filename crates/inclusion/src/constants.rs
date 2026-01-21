@@ -10,5 +10,5 @@ pub const MAX_CONSTRAINTS_PER_SLOT: usize = 256;
 /// Number of slots to query for delegated slots
 pub const LOOKAHEAD_WINDOW_SIZE: u64 = 64;
 
-/// Number of seconds before the next slot to trigger posting SignedConstraints
-pub const CONSTRAINT_TRIGGER_OFFSET: i64 = 2;
+/// Number of milliseconds before the next slot to trigger posting SignedConstraints
+pub const CONSTRAINT_TRIGGER_OFFSET_MS: i64 = 14_000;

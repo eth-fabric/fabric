@@ -49,6 +49,15 @@ impl CommitmentsRpcServer for GatewayRpc {
 		})?;
 		debug!("Validated inclusion payload for slot {}", inclusion_payload.slot);
 
+		// Validate that there is enough time before the constraints submission time to process the commitment
+		utils::validate_commitment_timing(&inclusion_payload, &self.state.chain).map_err(|e| {
+			jsonrpsee::types::error::ErrorObject::owned(
+				-32602, // Invalid params
+				"Not enough time to satisfy request",
+				Some(format!("{}", e)),
+			)
+		})?;
+
 		// Get the *singular* valid signed delegation for the slot
 		// Error if none exists for this gateway
 		let signed_delegation = self

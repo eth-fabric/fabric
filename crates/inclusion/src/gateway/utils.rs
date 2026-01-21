@@ -1,3 +1,4 @@
+
 use eyre::{Result, WrapErr};
 use tracing::debug;
 
@@ -14,8 +15,9 @@ use signing::signer;
 use urc::utils::{
 	get_commitment_request_signing_root, get_commitment_signing_root, get_constraints_message_signing_root,
 };
+use lookahead::utils::time_until_slot_ms;
 
-use crate::constants::{INCLUSION_COMMITMENT_TYPE, INCLUSION_CONSTRAINT_TYPE};
+use crate::constants::{CONSTRAINT_TRIGGER_OFFSET_MS, INCLUSION_COMMITMENT_TYPE, INCLUSION_CONSTRAINT_TYPE};
 use crate::types::{FeePayload, InclusionPayload};
 
 /// Helper functions for RPC business logic
@@ -67,6 +69,31 @@ pub fn validate_commitment_request(request: &CommitmentRequest) -> Result<Inclus
 			return Err(eyre::eyre!("Invalid payload format: {}", e));
 		}
 	}
+}
+
+/// Validates that there is enough time before the constraints submission time to process the commitment
+pub fn validate_commitment_timing(inclusion_payload: &InclusionPayload, chain: &Chain) -> Result<()> {
+	let target_slot = inclusion_payload.slot;
+	let time_until_slot = time_until_slot_ms(chain.genesis_time_sec(), target_slot);
+	let time_until_submission = time_until_slot - CONSTRAINT_TRIGGER_OFFSET_MS;
+
+	debug!(
+		"validate_commitment_timing: target_slot={}, genesis_time={}, time_until_slot={}ms, time_until_submission={}ms",
+		target_slot,
+		chain.genesis_time_sec(),
+		time_until_slot,
+		time_until_submission
+	);
+
+	if time_until_submission <= 0 {
+		return Err(eyre::eyre!(
+			"Not enough time before constraints submission time to process commitment (target_slot={}, time_until_slot={}ms, need at least {}ms)",
+			target_slot,
+			time_until_slot,
+			CONSTRAINT_TRIGGER_OFFSET_MS
+		));
+	}
+	Ok(())
 }
 
 /// Converts a TxEnvelope to a TransactionRequest suitable for eth_estimateGas
