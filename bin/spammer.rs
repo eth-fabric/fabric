@@ -55,7 +55,7 @@ async fn generate_signed_transaction(config: &SpammerConfig, signer: &PrivateKey
 		.ok_or_else(|| eyre::eyre!("Failed to get latest block"))?;
 	let base_fee =
 		latest_block.header.base_fee_per_gas.ok_or_else(|| eyre::eyre!("No base fee in block (pre-EIP-1559?)"))?;
-	let max_fee_per_gas = base_fee * 2;
+	let max_fee_per_gas = base_fee * 100000; // A lot more to avoid getting outbid
 
 	let balance = execution_client.get_balance(signer.address()).await?;
 	info!("Sender address: {:?}", signer.address());

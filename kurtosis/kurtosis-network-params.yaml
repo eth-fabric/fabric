@@ -26,8 +26,8 @@ network_params:
 # Setup a relay
 mev_params:
   mev_relay_image: ethpandaops/mev-boost-relay:main
-  mev_boost_image: flashbots/mev-boost:latest
-  mev_boost_args: ["mev-boost", "--request-timeout-getheader", "3000"]
+  mev_boost_image: ethpandaops/mev-boost:develop
+  mev_boost_args: ["mev-boost", "--relay-check", "--request-timeout-getheader", "3000"]
   mev_relay_api_extra_args: []
   mev_relay_api_extra_env_vars: {}
   mev_relay_housekeeper_extra_args: []
@@ -49,3 +49,13 @@ additional_services:
   - spamoor
   # Enable Apache to serve bootnode info (ENR/enode)
   - apache
+
+spamoor_params:
+  spammers:
+    - name: "EOA Spammer (Reduced)"
+      scenario: "eoatx"
+      config:
+        throughput: 20  # transactions per slot (default is 200)
+        max_pending: 40
+        max_wallets: 20
+        base_fee: 20

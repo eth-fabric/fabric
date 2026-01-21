@@ -31,15 +31,15 @@ extra_data = "🧵 constraints test"
 
 ignore_cancellable_orders = true
 
-slot_delta_to_start_bidding_ms = -11500
-# slot_delta_to_start_bidding_ms = 8000
+slot_delta_to_start_bidding_ms = -8500
 
 sbundle_mergeable_signers = []
 live_builders = ["mgp-ordering"]
 
 enabled_relays = ["Constraints-Server"]
 
-subsidy = "0.00000000000001"
+# Set a high subsidy when simulating so block is chosen
+subsidy = "10.0"
 
 root_hash_use_sparse_trie = true
 root_hash_compare_sparse_trie = false
@@ -54,7 +54,7 @@ name = "Constraints-Server"
 # and the constraints server will forward requests
 url = "http://constraints-server:9998"
 mode = "full"
-max_bid_eth = "0.05"
+max_bid_eth = "100.0"
 
 [[builders]]
 name = "mgp-ordering"
