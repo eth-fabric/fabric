@@ -43,6 +43,9 @@ export OUTPUT_DIR=${OUTPUT_DIR:-/tmp/fabric}
 # The directory containing the simulation configuration files
 export CONFIG_DIR=${KURTOSIS_DIR}/config
 
+# The directory containing the simulation data files
+export DATA_DIR=${CONFIG_DIR}/data
+
 # The config file for the fabric services
 export FABRIC_CONFIG=${REPO_ROOT}/config/docker.config.toml
 
@@ -59,14 +62,14 @@ echo "Enclave: ${ENCLAVE_NAME}"
 echo "Kurtosis dir: ${KURTOSIS_DIR}"
 echo "Repo root: ${REPO_ROOT}"
 if [ "$DOCKER_ONLY" = true ]; then
-    echo "Mode: DEV (skipping Kurtosis teardown/creation)"
+    echo "Mode: DOCKER_ONLY (skipping Kurtosis teardown/creation)"
 fi
 echo ""
 
 # Step 1: Stop existing Docker Compose services
 echo ""
 echo "[Step 1/11] Stopping existing Docker Compose services..."
-cd "${KURTOSIS_DIR}"
+cd "${CONFIG_DIR}"
 docker compose down -v 2>/dev/null || echo "  No existing compose services to stop"
 
 # Step 2: Tear down existing Kurtosis enclave
@@ -112,11 +115,11 @@ cd "${SCRIPTS_DIR}"
 echo ""
 echo "[Step 7/11] Fetching genesis, JWT, and bootnode data..."
 cd "${SCRIPTS_DIR}"
-./get_kurtosis_data.sh
+./get_kurtosis_data.sh ${ENCLAVE_NAME} ${DATA_DIR}
 
 # Load the Bootnodes into environment variables (comma-separated)
-export BOOTNODES_EL=$(grep -m 1 '^enode://' ./data/genesis/bootnode.txt)
-export BOOTNODES_CL=$(grep -m 1 '^enr:' ./data/genesis/bootstrap_nodes.txt)
+export BOOTNODES_EL=$(grep -m 1 '^enode://' ${DATA_DIR}/genesis/bootnode.txt)
+export BOOTNODES_CL=$(grep -m 1 '^enr:' ${DATA_DIR}/genesis/bootstrap_nodes.txt)
 echo "BOOTNODES_EL=$BOOTNODES_EL"
 echo "BOOTNODES_CL=$BOOTNODES_CL"
 

@@ -104,8 +104,8 @@ services:
     image: constraints-builder:${VERSION:-dev}
     container_name: constraints-builder
     volumes:
-      - ${KURTOSIS_DIR}/data/genesis:/network-configs:ro
-      - ${KURTOSIS_DIR}/data/jwt:/jwt:ro
+      - ${DATA_DIR}/genesis:/network-configs:ro
+      - ${DATA_DIR}/jwt:/jwt:ro
       - reth-data:/data/reth
       - ${CONSTRAINTS_BUILDER_CONFIG}:/app/config.toml:ro
       - ${CONSTRAINTS_BUILDER_BLOCKLIST}:/app/blocklist.json:ro
