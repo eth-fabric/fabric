@@ -12,5 +12,5 @@ WORKDIR /app
 
 COPY ${BINARIES_PATH}/relay /usr/local/bin/app
 
-USER 10001:10001
+#USER 10001:10001
 ENTRYPOINT ["/usr/local/bin/app"]

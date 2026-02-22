@@ -12,8 +12,10 @@ WORKDIR /app
 
 COPY ${BINARIES_PATH}/local-signer-module /usr/local/bin/app
 
-RUN useradd -u 10001 -m appuser && \
-    mkdir -p /app/data/proxy /app/data/keystores/keys /app/data/keystores/secrets && \
-    chown -R appuser:appuser /app
-USER appuser
+#RUN useradd -u 10001 -m appuser && \
+#    mkdir -p /app/data/proxy /app/data/keystores/keys /app/data/keystores/secrets && \
+#    chown -R appuser:appuser /app
+#USER appuser
+RUN mkdir -p /app/data/proxy /app/data/keystores/keys /app/data/keystores/secrets
+
 ENTRYPOINT ["/usr/local/bin/app"]
