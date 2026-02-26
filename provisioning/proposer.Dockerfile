@@ -12,5 +12,4 @@ WORKDIR /app
 
 COPY ${BINARIES_PATH}/proposer /usr/local/bin/app
 
-USER 10001:10001
 ENTRYPOINT ["/usr/local/bin/app"]

@@ -72,7 +72,7 @@ This repo contains an end-to-end reference implementation of L1 inclusion precon
 ### Prerequisites
 
 - **Rust** (stable) - Install from [rustup.rs](https://rustup.rs/)
-- **Just** - Task runner (`brew install just` on macOS)
+- **Just** - Task runner ([GitHub](https://github.com/casey/just?tab=readme-ov-file#packages))
 - **Foundry** - For URC contract bindings (optional, only if modifying contracts)
 - **Kurtosis CLI** - See [installation guide](https://docs.kurtosis.com/install)
 
@@ -109,10 +109,10 @@ export VERSION=dev
 just build-signer $VERSION
 
 # Build Gateway Docker image
-just build-signer $VERSION
+just build-gateway $VERSION
 
 # Build Relay Docker image
-just build-signer $VERSION
+just build-relay $VERSION
 
 # Build Proposer Module Docker image
 just build-proposer $VERSION

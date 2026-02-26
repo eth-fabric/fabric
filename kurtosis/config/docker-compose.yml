@@ -1,7 +1,7 @@
 x-bin-base: &bin-base
   restart: unless-stopped
   environment:
-    - RUST_LOG=${RUST_LOG:-info}
+    - RUST_LOG=${RUST_LOG:-debug}
 
 services:
   gateway:
@@ -16,6 +16,8 @@ services:
     expose:
       - "8080"
       - "8082"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - constraints-server
       - gateway-signer
@@ -35,6 +37,8 @@ services:
       - "9998"
     ports:
       - "9998:9998"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9998/health"]
       interval: 30s
@@ -53,6 +57,8 @@ services:
     volumes:
       - ${REPO_ROOT}/config/docker/proposer.toml:/app/config.toml:ro
       - ${OUTPUT_DIR}/rocksdb:/app/rocksdb
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - proposer-signer
       - constraints-server
@@ -68,6 +74,8 @@ services:
       - ${REPO_ROOT}/config/docker/spammer.toml:/app/config.toml:ro
     environment:
       - SENDER_PRIVATE_KEY=0xbcdf20249abf0ed6d944c0288fad489e33f66b3960d9e6229c1cd214ed3bbe31
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - gateway
     networks:
@@ -117,6 +125,8 @@ services:
       - TRUSTED_PEER=${TRUSTED_PEER}
       - FEE_RECIPIENT=${FEE_RECIPIENT}
       - COINBASE_SECRET_KEY=0x53321db7c1e331d93a11a41d16f004d7ff63972ec8ec7c25db329728ceeb1710
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8545:8545"   # JSON-RPC
       - "8546:8546"   # WebSocket
